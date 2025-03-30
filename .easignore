@@ -1,0 +1,6 @@
+Library/
+.Trash/
+*.odl
+*.aodl
+.DS_Store
+node_modules/
