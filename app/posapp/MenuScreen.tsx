@@ -1,32 +1,28 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import {
-  addDoc, collection, deleteDoc,
-  doc, getDocs, orderBy, query,
-  updateDoc
+  addDoc, collection, deleteDoc, doc,
+  getDocs, orderBy, query, updateDoc
 } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
   Alert, FlatList, Image, StyleSheet,
   Text, TextInput, TouchableOpacity, View
 } from 'react-native';
-import { db } from '../../firebaseConfig';
+import { auth, db } from '../../firebaseConfig';
 import { supabase } from '../../supabaseClient';
 
 export default function MenuScreen() {
   const [menuItems, setMenuItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-
   const [itemName, setItemName] = useState('');
   const [itemPrice, setItemPrice] = useState('');
   const [itemCategory, setItemCategory] = useState('');
   const [newItemAvailability, setNewItemAvailability] = useState(true);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [imageUri, setImageUri] = useState<string | null>(null);
-
   const [viewMode, setViewMode] = useState('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
-
   const [supabaseImages, setSupabaseImages] = useState<string[]>([]);
 
   const router = useRouter();
@@ -58,18 +54,11 @@ export default function MenuScreen() {
       sortBy: { column: 'created_at', order: 'desc' },
     });
 
-    if (error) {
-      console.error('Error al listar imágenes:', error);
-      return;
-    }
+    if (error) return console.error('Error al listar imágenes:', error);
 
     const urls = data
       .filter(file => file.name.endsWith('.jpg') || file.name.endsWith('.jpeg') || file.name.endsWith('.png'))
-      .map(file => {
-        return supabase.storage
-          .from('galeriaposapp')
-          .getPublicUrl(file.name).data.publicUrl;
-      });
+      .map(file => supabase.storage.from('galeriaposapp').getPublicUrl(file.name).data.publicUrl);
 
     setSupabaseImages(urls);
   };
@@ -95,18 +84,13 @@ export default function MenuScreen() {
       const blob = await response.blob();
       const fileName = `${Date.now()}.jpg`;
 
-      const { data, error } = await supabase.storage
+      const { error } = await supabase.storage
         .from('galeriaposapp')
-        .upload(fileName, blob, {
-          contentType: 'image/jpeg',
-        });
+        .upload(fileName, blob, { contentType: 'image/jpeg' });
 
-      if (error) {
-        console.error('Error subiendo imagen:', error);
-      } else {
-        console.log('Imagen subida:', fileName);
-        loadImagesFromSupabase(); // refrescar galería
-      }
+      if (error) console.error('Error subiendo imagen:', error);
+      else loadImagesFromSupabase();
+
     } catch (uploadError) {
       console.error('Error al procesar imagen:', uploadError);
     }
@@ -145,9 +129,7 @@ export default function MenuScreen() {
       setEditingItemId(null);
       loadMenu();
 
-      if (imageUri) {
-        await uploadImageToSupabase();
-      }
+      if (imageUri) await uploadImageToSupabase();
 
     } catch (error) {
       console.error('Error al guardar ítem:', error);
@@ -164,8 +146,7 @@ export default function MenuScreen() {
 
   const deleteItem = async (id: string) => {
     try {
-      const ref = doc(db, 'menu', id);
-      await deleteDoc(ref);
+      await deleteDoc(doc(db, 'menu', id));
       loadMenu();
     } catch (error) {
       console.error('Error al eliminar ítem:', error);
@@ -174,16 +155,19 @@ export default function MenuScreen() {
 
   const toggleAvailability = async (id: string, current: boolean) => {
     try {
-      const ref = doc(db, 'menu', id);
-      await updateDoc(ref, { available: !current });
+      await updateDoc(doc(db, 'menu', id), { available: !current });
       loadMenu();
     } catch (error) {
       console.error('Error al actualizar disponibilidad:', error);
     }
   };
 
-  const availableCount = menuItems.filter((i) => i.available).length;
-  const unavailableCount = menuItems.filter((i) => !i.available).length;
+  const filteredItems = menuItems.filter((item) => {
+    if (viewMode === 'all') return true;
+    if (viewMode === 'available') return item.available;
+    if (viewMode === 'unavailable') return !item.available;
+    return false;
+  });
 
   if (loading) {
     return (
@@ -193,15 +177,12 @@ export default function MenuScreen() {
     );
   }
 
-  const filteredItems = menuItems.filter((item) => {
-    if (viewMode === 'all') return true;
-    if (viewMode === 'available') return item.available;
-    if (viewMode === 'unavailable') return !item.available;
-    return false;
-  });
-
   return (
     <View style={styles.container}>
+      <TouchableOpacity style={styles.menuButton} onPress={() => setDrawerOpen(true)}>
+        <Text style={styles.menuButtonText}>≡</Text>
+      </TouchableOpacity>
+
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Menú - POSApp</Text>
       </View>
@@ -221,53 +202,26 @@ export default function MenuScreen() {
       </View>
 
       <View style={styles.mainContent}>
-        <TextInput
-          style={styles.input}
-          placeholder="Nombre del ítem"
-          value={itemName}
-          onChangeText={setItemName}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Precio"
-          keyboardType="numeric"
-          value={itemPrice}
-          onChangeText={setItemPrice}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Categoría (opcional)"
-          value={itemCategory}
-          onChangeText={setItemCategory}
-        />
+        <TextInput style={styles.input} placeholder="Nombre del ítem" value={itemName} onChangeText={setItemName} />
+        <TextInput style={styles.input} placeholder="Precio" keyboardType="numeric" value={itemPrice} onChangeText={setItemPrice} />
+        <TextInput style={styles.input} placeholder="Categoría (opcional)" value={itemCategory} onChangeText={setItemCategory} />
 
         <TouchableOpacity style={styles.addButton} onPress={pickImage}>
           <Text style={styles.addButtonText}>Seleccionar Imagen</Text>
         </TouchableOpacity>
 
         {imageUri && (
-          <Image
-            source={{ uri: imageUri }}
-            style={{ width: 100, height: 100, marginBottom: 10, borderRadius: 8 }}
-          />
+          <Image source={{ uri: imageUri }} style={{ width: 100, height: 100, marginBottom: 10, borderRadius: 8 }} />
         )}
 
-        <TouchableOpacity
-          style={[styles.statusButton, newItemAvailability ? styles.available : styles.occupied]}
-          onPress={() => setNewItemAvailability(!newItemAvailability)}
-        >
-          <Text style={styles.statusButtonText}>
-            {newItemAvailability ? 'Disponible' : 'No Disponible'}
-          </Text>
+        <TouchableOpacity style={[styles.statusButton, newItemAvailability ? styles.available : styles.occupied]} onPress={() => setNewItemAvailability(!newItemAvailability)}>
+          <Text style={styles.statusButtonText}>{newItemAvailability ? 'Disponible' : 'No Disponible'}</Text>
         </TouchableOpacity>
 
         <TouchableOpacity style={styles.addButton} onPress={handleSaveItem}>
-          <Text style={styles.addButtonText}>
-            {editingItemId ? 'Guardar Cambios' : 'Agregar Ítem'}
-          </Text>
+          <Text style={styles.addButtonText}>{editingItemId ? 'Guardar Cambios' : 'Agregar Ítem'}</Text>
         </TouchableOpacity>
 
-        {/* Render del menú (sin imagen) */}
         <FlatList
           data={filteredItems}
           keyExtractor={(item) => item.id}
@@ -276,16 +230,9 @@ export default function MenuScreen() {
           renderItem={({ item }) => (
             <View style={styles.itemCard}>
               <Text style={styles.itemTitle}>{item.name}</Text>
-              <Text style={styles.itemStatus}>
-                Precio: ${item.price} | Cat: {item.category || 'General'}
-              </Text>
-              <Text style={styles.itemStatus}>
-                Estado: {item.available ? 'Disponible' : 'No Disponible'}
-              </Text>
-              <TouchableOpacity
-                style={[styles.itemButton, item.available ? styles.available : styles.occupied]}
-                onPress={() => toggleAvailability(item.id, item.available)}
-              >
+              <Text style={styles.itemStatus}>Precio: ${item.price} | Cat: {item.category || 'General'}</Text>
+              <Text style={styles.itemStatus}>Estado: {item.available ? 'Disponible' : 'No Disponible'}</Text>
+              <TouchableOpacity style={[styles.itemButton, item.available ? styles.available : styles.occupied]} onPress={() => toggleAvailability(item.id, item.available)}>
                 <Text style={styles.buttonText}>
                   {item.available ? 'Marcar No Disponible' : 'Marcar Disponible'}
                 </Text>
@@ -301,27 +248,43 @@ export default function MenuScreen() {
         />
       </View>
 
-      {/* Galería de imágenes de Supabase */}
-      <View style={{ marginTop: 20 }}>
-        <Text style={{ fontSize: 18, fontWeight: 'bold', marginBottom: 10 }}>Galería de Imágenes</Text>
-        <FlatList
-          data={supabaseImages}
-          keyExtractor={(uri) => uri}
-          horizontal
-          renderItem={({ item }) => (
-            <Image
-              source={{ uri: item }}
-              style={{ width: 120, height: 120, marginRight: 10, borderRadius: 8 }}
-            />
-          )}
-        />
-      </View>
+      {/* Drawer lateral */}
+      {drawerOpen && (
+        <View style={styles.drawerContainer}>
+          <View style={styles.drawer}>
+            <Text style={styles.drawerTitle}>Menú</Text>
+
+            <TouchableOpacity style={styles.drawerOption} onPress={() => {
+              router.push('/posapp/posapp');
+              setDrawerOpen(false);
+            }}>
+              <Text style={styles.drawerOptionText}>Ver Mesas</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.drawerOption} onPress={async () => {
+              await auth.signOut();
+              router.replace('/');
+            }}>
+              <Text style={styles.drawerOptionText}>Cerrar Sesión</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.drawerOption} onPress={() => setDrawerOpen(false)}>
+              <Text style={styles.drawerOptionText}>Cerrar Drawer</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f4f4f9', padding: 15 },
+  menuButton: {
+    position: 'absolute', top: 30, left: 20, zIndex: 999,
+    backgroundColor: '#2ecc71', padding: 10, borderRadius: 5
+  },
+  menuButtonText: { color: '#fff', fontWeight: 'bold', fontSize: 16 },
   header: {
     flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', backgroundColor: '#2ecc71',
@@ -329,14 +292,11 @@ const styles = StyleSheet.create({
   },
   headerTitle: { fontSize: 20, color: '#fff', fontWeight: 'bold' },
   filterBar: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  filterButton: {
-    padding: 8, backgroundColor: '#ecf0f1',
-    borderRadius: 5, width: '32%', alignItems: 'center',
-  },
+  filterButton: { padding: 8, backgroundColor: '#ecf0f1', borderRadius: 5, width: '32%', alignItems: 'center' },
   activeButton: { backgroundColor: '#2ecc71' },
   filterButtonText: { fontSize: 14, color: '#2ecc71', fontWeight: 'bold' },
   activeText: { color: '#fff' },
-  mainContent: { flex: 1, alignItems: 'center' },
+  mainContent: { flex: 1, alignItems: 'center', marginTop: 10 },
   input: {
     width: '80%', padding: 8, backgroundColor: '#fff',
     borderRadius: 5, borderColor: '#ccc', borderWidth: 1, marginBottom: 8,
@@ -346,9 +306,7 @@ const styles = StyleSheet.create({
     borderRadius: 5, alignItems: 'center', marginBottom: 10,
   },
   addButtonText: { fontSize: 14, color: '#fff', fontWeight: 'bold' },
-  statusButton: {
-    padding: 8, borderRadius: 5, marginBottom: 8,
-  },
+  statusButton: { padding: 8, borderRadius: 5, marginBottom: 8 },
   statusButtonText: { color: '#fff', fontWeight: 'bold' },
   itemCard: {
     backgroundColor: '#fff', width: '80%', maxWidth: 400,
@@ -363,4 +321,25 @@ const styles = StyleSheet.create({
   editButton: { marginTop: 5, backgroundColor: '#2980b9', padding: 8, borderRadius: 5, alignItems: 'center' },
   deleteButton: { marginTop: 5, backgroundColor: '#e74c3c', padding: 8, borderRadius: 5, alignItems: 'center' },
   loadingText: { fontSize: 16, color: '#7f8c8d' },
+  drawerContainer: {
+    position: 'absolute', top: 0, left: 0,
+    width: '100%', height: '100%',
+    backgroundColor: 'rgba(0,0,0,0.4)'
+  },
+  drawer: {
+    width: 200, height: '100%',
+    backgroundColor: '#ecf0f1', padding: 20
+  },
+  drawerTitle: {
+    fontSize: 18, fontWeight: 'bold',
+    marginBottom: 10, color: '#333'
+  },
+  drawerOption: {
+    backgroundColor: '#bdc3c7',
+    padding: 10, borderRadius: 5,
+    marginBottom: 10,
+  },
+  drawerOptionText: {
+    color: '#2c3e50', fontWeight: 'bold'
+  }
 });

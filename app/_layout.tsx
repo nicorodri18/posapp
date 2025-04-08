@@ -1,3 +1,4 @@
+// app/Layout.tsx
 import { Stack } from 'expo-router';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { useEffect, useState } from 'react';

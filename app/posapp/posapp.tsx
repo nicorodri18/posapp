@@ -1,26 +1,22 @@
+import { useRouter } from 'expo-router';
 import { addDoc, collection, deleteDoc, doc, getDocs, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  Alert, FlatList, Image, StyleSheet,
-  Text, TextInput, TouchableOpacity, View
+  Alert, FlatList, Image,
+  StyleSheet,
+  Text,
+  TextInput, TouchableOpacity, View
 } from 'react-native';
-import { db } from '../../firebaseConfig';
-
-// Importa useRouter si vas a navegar con expo-router
-import { useRouter } from 'expo-router';
+import { auth, db } from '../../firebaseConfig';
 
 export default function POSAppScreen() {
-  // Estado de mesas, etc.
   const [tables, setTables] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTableNumber, setNewTableNumber] = useState('');
   const [newTableStatus, setNewTableStatus] = useState('Disponible');
   const [viewMode, setViewMode] = useState('all');
-
-  // Estado para controlar el drawer
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Si usas expo-router, obtén router
   const router = useRouter();
 
   const loadTables = async () => {
@@ -100,20 +96,15 @@ export default function POSAppScreen() {
 
   return (
     <View style={styles.container}>
-
-      {/* Botón que abre el drawer */}
       <TouchableOpacity style={styles.menuButton} onPress={() => setDrawerOpen(true)}>
-        <Text style={styles.menuButtonText}>≡</Text> 
-        {/* Un ícono simple, podrías usar un ícono de hamburguesa */}
+        <Text style={styles.menuButtonText}>≡</Text>
       </TouchableOpacity>
 
-      {/* Barra superior */}
       <View style={styles.header}>
         <Image source={require('../../assets/images/pos-logo.png')} style={styles.logo} />
         <Text style={styles.headerTitle}>POSApp</Text>
       </View>
 
-      {/* Selección de mesas */}
       <View style={styles.filterBar}>
         <TouchableOpacity
           style={[styles.filterButton, viewMode === 'all' && styles.activeButton]}
@@ -135,12 +126,10 @@ export default function POSAppScreen() {
         </TouchableOpacity>
       </View>
 
-      {/* Contenido principal */}
       <View style={styles.mainContent}>
         <Text style={styles.welcomeText}>Bienvenido, Administrador</Text>
         <Text style={styles.instructions}>Elige una mesa para gestionar</Text>
 
-        {/* Input para agregar una nueva mesa */}
         <TextInput
           style={styles.input}
           value={newTableNumber}
@@ -152,7 +141,6 @@ export default function POSAppScreen() {
           <Text style={styles.addButtonText}>Agregar Mesa</Text>
         </TouchableOpacity>
 
-        {/* Lista de mesas filtrada */}
         <FlatList
           data={filteredTables}
           keyExtractor={(item) => item.id}
@@ -177,7 +165,6 @@ export default function POSAppScreen() {
         />
       </View>
 
-      {/* Estadísticas */}
       <View style={styles.statsContainer}>
         <View style={styles.statCard}>
           <Text style={styles.statTitle}>Mesas Disponibles</Text>
@@ -189,15 +176,14 @@ export default function POSAppScreen() {
         </View>
       </View>
 
-      {/* Drawer manual */}
       {drawerOpen && (
         <View style={styles.drawerContainer}>
           <View style={styles.drawer}>
             <Text style={styles.drawerTitle}>Menú de Opciones</Text>
+
             <TouchableOpacity
               style={styles.drawerOption}
               onPress={() => {
-                // Por ejemplo, ir a MenuScreen si usas expo-router:
                 router.push('/posapp/MenuScreen');
                 setDrawerOpen(false);
               }}
@@ -205,7 +191,26 @@ export default function POSAppScreen() {
               <Text style={styles.drawerOptionText}>Ir a Menú</Text>
             </TouchableOpacity>
 
-            {/* Otras opciones */}
+            <TouchableOpacity
+              style={styles.drawerOption}
+              onPress={() => {
+                router.push('/chef/KitchenScreen');
+                setDrawerOpen(false);
+              }}
+            >
+              <Text style={styles.drawerOptionText}>Ver Pedidos (Cocina)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.drawerOption}
+              onPress={async () => {
+                await auth.signOut();
+                router.replace('/');
+              }}
+            >
+              <Text style={styles.drawerOptionText}>Cerrar sesión</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.drawerOption}
               onPress={() => setDrawerOpen(false)}
@@ -219,7 +224,6 @@ export default function POSAppScreen() {
   );
 }
 
-// Estilos
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -230,7 +234,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 25,
     left: 25,
-    zIndex: 999, // Para que quede sobre todo
+    zIndex: 999,
     backgroundColor: '#2ecc71',
     padding: 10,
     borderRadius: 5,
@@ -286,7 +290,7 @@ const styles = StyleSheet.create({
   mainContent: {
     flex: 1,
     alignItems: 'center',
-    marginTop: 60, // para dejar espacio al botón menú
+    marginTop: 60,
   },
   welcomeText: {
     fontSize: 24,
@@ -390,15 +394,13 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: '#7f8c8d',
   },
-
-  // Drawer manual
   drawerContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     width: '100%',
     height: '100%',
-    backgroundColor: 'rgba(0,0,0,0.4)', // semitransparente
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   drawer: {
     width: 200,

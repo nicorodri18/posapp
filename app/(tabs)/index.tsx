@@ -1,9 +1,21 @@
 // app/tabs/index.tsx
 import { useRouter } from 'expo-router';
-import { createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import {
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { auth } from '../../firebaseConfig'; // Asegúrate de que la ruta sea correcta
+import {
+  ActivityIndicator,
+  Alert,
+  Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import { auth } from '../../firebaseConfig';
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -17,12 +29,26 @@ export default function HomeScreen() {
     try {
       if (isRegistering) {
         await createUserWithEmailAndPassword(auth, email, password);
-      } else {
-        await signInWithEmailAndPassword(auth, email, password);
+        Alert.alert('Cuenta creada', 'Puedes iniciar sesión ahora.');
+        setIsRegistering(false);
+        setIsLoading(false);
+        return;
       }
-      // Redirigir a la ruta absoluta '/posapp/posapp' después del login
-      router.replace('/posapp/posapp');  // Ruta absoluta hacia posapp
-    } catch (error) {
+
+      await signInWithEmailAndPassword(auth, email, password);
+
+      if (email === 'admin@gmail.com') {
+        // Solo este usuario puede ingresar como admin
+        if (password === '123456') {
+          router.replace('/posapp/posapp'); // Ruta de administrador
+        } else {
+          Alert.alert('Error', 'Contraseña incorrecta para administrador');
+          await auth.signOut(); // Salir si la clave no es válida
+        }
+      } else {
+        router.replace('/client/MenuScreen'); // Ruta del cliente
+      }
+    } catch (error: any) {
       Alert.alert('Error', error.message);
     } finally {
       setIsLoading(false);
