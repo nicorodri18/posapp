@@ -1,7 +1,7 @@
 import * as ImagePicker from 'expo-image-picker';
 import { useRouter } from 'expo-router';
 import {
-  addDoc, collection, deleteDoc, doc,
+  addDoc, collection, deleteDoc, doc, getDoc,
   getDocs, orderBy, query, updateDoc
 } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
@@ -23,13 +23,11 @@ export default function MenuScreen() {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState('all');
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [supabaseImages, setSupabaseImages] = useState<string[]>([]);
 
   const router = useRouter();
 
   useEffect(() => {
     loadMenu();
-    loadImagesFromSupabase();
   }, []);
 
   const loadMenu = async () => {
@@ -48,21 +46,6 @@ export default function MenuScreen() {
     }
   };
 
-  const loadImagesFromSupabase = async () => {
-    const { data, error } = await supabase.storage.from('galeriaposapp').list('', {
-      limit: 100,
-      sortBy: { column: 'created_at', order: 'desc' },
-    });
-
-    if (error) return console.error('Error al listar imágenes:', error);
-
-    const urls = data
-      .filter(file => file.name.endsWith('.jpg') || file.name.endsWith('.jpeg') || file.name.endsWith('.png'))
-      .map(file => supabase.storage.from('galeriaposapp').getPublicUrl(file.name).data.publicUrl);
-
-    setSupabaseImages(urls);
-  };
-
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -76,8 +59,8 @@ export default function MenuScreen() {
     }
   };
 
-  const uploadImageToSupabase = async () => {
-    if (!imageUri) return;
+  const uploadImageToSupabase = async (): Promise<string | null> => {
+    if (!imageUri) return null;
 
     try {
       const response = await fetch(imageUri);
@@ -88,14 +71,31 @@ export default function MenuScreen() {
         .from('galeriaposapp')
         .upload(fileName, blob, { contentType: 'image/jpeg' });
 
-      if (error) console.error('Error subiendo imagen:', error);
-      else loadImagesFromSupabase();
+      if (error) {
+        console.error('Error subiendo imagen:', error);
+        Alert.alert('Error', 'No se pudo subir la imagen');
+        return null;
+      }
+
+      // Obtener la URL pública de la imagen
+      const { data } = supabase.storage.from('galeriaposapp').getPublicUrl(fileName);
+      const imageUrl = data.publicUrl;
+
+      if (!imageUrl) {
+        Alert.alert('Error', 'No se pudo obtener la URL de la imagen');
+        return null;
+      }
+
+      Alert.alert('Éxito', 'Imagen subida correctamente');
+      return imageUrl;
 
     } catch (uploadError) {
       console.error('Error al procesar imagen:', uploadError);
+      Alert.alert('Error', 'Error al procesar la imagen');
+      return null;
+    } finally {
+      setImageUri(null);
     }
-
-    setImageUri(null);
   };
 
   const handleSaveItem = async () => {
@@ -105,6 +105,12 @@ export default function MenuScreen() {
     }
 
     try {
+      let imageUrl = null;
+      if (imageUri) {
+        imageUrl = await uploadImageToSupabase();
+        if (!imageUrl) return; // Si falla la subida, no continuamos
+      }
+
       if (editingItemId) {
         const ref = doc(db, 'menu', editingItemId);
         await updateDoc(ref, {
@@ -112,6 +118,7 @@ export default function MenuScreen() {
           price: parseFloat(itemPrice),
           category: itemCategory || 'General',
           available: newItemAvailability,
+          ...(imageUrl && { imageUrl }), // Solo actualiza la URL si hay una nueva imagen
         });
       } else {
         await addDoc(collection(db, 'menu'), {
@@ -119,6 +126,7 @@ export default function MenuScreen() {
           price: parseFloat(itemPrice),
           category: itemCategory || 'General',
           available: newItemAvailability,
+          ...(imageUrl && { imageUrl }), // Agrega la URL si hay una imagen
         });
       }
 
@@ -129,10 +137,9 @@ export default function MenuScreen() {
       setEditingItemId(null);
       loadMenu();
 
-      if (imageUri) await uploadImageToSupabase();
-
     } catch (error) {
       console.error('Error al guardar ítem:', error);
+      Alert.alert('Error', 'No se pudo guardar el ítem');
     }
   };
 
@@ -142,14 +149,28 @@ export default function MenuScreen() {
     setItemPrice(String(item.price));
     setItemCategory(item.category);
     setNewItemAvailability(item.available);
+    setImageUri(null); // Resetea la imagen al editar
   };
 
   const deleteItem = async (id: string) => {
     try {
-      await deleteDoc(doc(db, 'menu', id));
+      // Obtener el ítem para acceder a la URL de la imagen
+      const itemRef = doc(db, 'menu', id);
+      const itemSnap = await getDoc(itemRef);
+      const itemData = itemSnap.data();
+
+      if (itemData?.imageUrl) {
+        // Extraer el nombre del archivo de la URL
+        const fileName = itemData.imageUrl.split('/').pop();
+        await supabase.storage.from('galeriaposapp').remove([fileName]);
+      }
+
+      // Eliminar el ítem de Firestore
+      await deleteDoc(itemRef);
       loadMenu();
     } catch (error) {
       console.error('Error al eliminar ítem:', error);
+      Alert.alert('Error', 'No se pudo eliminar el ítem');
     }
   };
 
@@ -159,6 +180,7 @@ export default function MenuScreen() {
       loadMenu();
     } catch (error) {
       console.error('Error al actualizar disponibilidad:', error);
+      Alert.alert('Error', 'No se pudo actualizar la disponibilidad');
     }
   };
 
@@ -229,6 +251,9 @@ export default function MenuScreen() {
           contentContainerStyle={{ alignItems: 'center' }}
           renderItem={({ item }) => (
             <View style={styles.itemCard}>
+              {item.imageUrl && (
+                <Image source={{ uri: item.imageUrl }} style={{ width: 100, height: 100, borderRadius: 8, marginBottom: 5, alignSelf: 'center' }} />
+              )}
               <Text style={styles.itemTitle}>{item.name}</Text>
               <Text style={styles.itemStatus}>Precio: ${item.price} | Cat: {item.category || 'General'}</Text>
               <Text style={styles.itemStatus}>Estado: {item.available ? 'Disponible' : 'No Disponible'}</Text>
@@ -248,7 +273,6 @@ export default function MenuScreen() {
         />
       </View>
 
-      {/* Drawer lateral */}
       {drawerOpen && (
         <View style={styles.drawerContainer}>
           <View style={styles.drawer}>
@@ -313,13 +337,14 @@ const styles = StyleSheet.create({
     padding: 12, borderRadius: 10, marginBottom: 10,
     borderWidth: 1, borderColor: '#ddd',
   },
-  itemTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 3 },
-  itemStatus: { fontSize: 13, color: '#7f8c8d', marginBottom: 2 },
+  itemTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 3, textAlign: 'center' },
+  itemStatus: { fontSize: 13, color: '#7f8c8d', marginBottom: 2, textAlign: 'center' },
   itemButton: { padding: 8, borderRadius: 5, marginTop: 5, alignItems: 'center' },
   available: { backgroundColor: '#2ecc71' },
   occupied: { backgroundColor: '#e74c3c' },
   editButton: { marginTop: 5, backgroundColor: '#2980b9', padding: 8, borderRadius: 5, alignItems: 'center' },
   deleteButton: { marginTop: 5, backgroundColor: '#e74c3c', padding: 8, borderRadius: 5, alignItems: 'center' },
+  buttonText: { color: '#fff', fontWeight: 'bold' },
   loadingText: { fontSize: 16, color: '#7f8c8d' },
   drawerContainer: {
     position: 'absolute', top: 0, left: 0,
