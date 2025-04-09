@@ -8,6 +8,7 @@ export default function KitchenScreen() {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [tick, setTick] = useState(0); // 
 
   const router = useRouter();
 
@@ -20,7 +21,12 @@ export default function KitchenScreen() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    const interval = setInterval(() => setTick((prev) => prev + 1), 1000); // cada segundo
+
+    return () => {
+      unsubscribe();
+      clearInterval(interval);
+    };
   }, []);
 
   const nextStatus = (current: string) => {
@@ -43,20 +49,21 @@ export default function KitchenScreen() {
     }
   };
 
-  const getElapsedMinutes = (timestamp: any) => {
+  const getElapsedTime = (timestamp: any) => {
     if (!timestamp) return '';
     const now = new Date();
     const createdAt = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     const diffMs = now.getTime() - createdAt.getTime();
     const minutes = Math.floor(diffMs / 60000);
-    return `${minutes} min`;
+    const seconds = Math.floor((diffMs % 60000) / 1000);
+    return `${minutes}m ${seconds < 10 ? '0' : ''}${seconds}s`;
   };
 
   const renderOrder = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <Text style={styles.title}>Mesa: {item.tableNumber || 'N/A'}</Text>
       <Text style={styles.status}>
-        Estado: {item.status} ({getElapsedMinutes(item.createdAt)})
+        Estado: {item.status} ({getElapsedTime(item.createdAt)})
       </Text>
       <Text style={styles.subtitle}>Productos:</Text>
       {item.items.map((prod: any, i: number) => (
@@ -86,6 +93,7 @@ export default function KitchenScreen() {
           data={orders}
           keyExtractor={(item) => item.id}
           renderItem={renderOrder}
+          extraData={tick}
         />
       )}
 
