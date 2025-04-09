@@ -43,10 +43,21 @@ export default function KitchenScreen() {
     }
   };
 
+  const getElapsedMinutes = (timestamp: any) => {
+    if (!timestamp) return '';
+    const now = new Date();
+    const createdAt = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+    const diffMs = now.getTime() - createdAt.getTime();
+    const minutes = Math.floor(diffMs / 60000);
+    return `${minutes} min`;
+  };
+
   const renderOrder = ({ item }: { item: any }) => (
     <View style={styles.card}>
       <Text style={styles.title}>Mesa: {item.tableNumber || 'N/A'}</Text>
-      <Text style={styles.status}>Estado: {item.status}</Text>
+      <Text style={styles.status}>
+        Estado: {item.status} ({getElapsedMinutes(item.createdAt)})
+      </Text>
       <Text style={styles.subtitle}>Productos:</Text>
       {item.items.map((prod: any, i: number) => (
         <Text key={i}>• {prod.name} x{prod.quantity}</Text>
@@ -62,7 +73,6 @@ export default function KitchenScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Botón de Drawer */}
       <TouchableOpacity style={styles.drawerToggle} onPress={() => setDrawerOpen(true)}>
         <Text style={styles.drawerToggleText}>≡</Text>
       </TouchableOpacity>

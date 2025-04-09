@@ -143,7 +143,6 @@ export default function ClientMenuScreen() {
       </TouchableOpacity>
 
       <Text style={styles.title}>Mesas Disponibles</Text>
-
       <View style={styles.tablesWrapper}>
         <FlatList
           data={tables}
@@ -218,6 +217,7 @@ export default function ClientMenuScreen() {
         <View style={styles.drawerOverlay}>
           <View style={styles.drawer}>
             <Text style={styles.drawerTitle}>Menú Cliente</Text>
+
             <TouchableOpacity
               style={styles.drawerOption}
               onPress={() => {
@@ -227,12 +227,24 @@ export default function ClientMenuScreen() {
             >
               <Text style={styles.drawerOptionText}>Ver estado del pedido</Text>
             </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.drawerOption}
+              onPress={() => {
+                router.push({ pathname: '/client/scanqrscreen' });
+                setDrawerOpen(false);
+              }}
+            >
+              <Text style={styles.drawerOptionText}>Escanear QR</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.drawerOption}
               onPress={handleLogout}
             >
               <Text style={styles.drawerOptionText}>Cerrar sesión</Text>
             </TouchableOpacity>
+
             <TouchableOpacity
               style={styles.drawerOption}
               onPress={() => setDrawerOpen(false)}
@@ -245,7 +257,6 @@ export default function ClientMenuScreen() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: { flex: 1, padding: 20, backgroundColor: '#f9f9f9' },
   title: { fontSize: 24, fontWeight: 'bold', marginBottom: 10 },
