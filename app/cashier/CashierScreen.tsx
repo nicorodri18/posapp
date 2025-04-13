@@ -2,13 +2,13 @@ import { useRouter } from 'expo-router';
 import { addDoc, collection, doc, onSnapshot, orderBy, query, updateDoc } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Modal,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Modal,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { auth, db } from '../../firebaseConfig';
 
@@ -49,8 +49,20 @@ export default function CashierScreen() {
       const { subtotal, tax, total } = calculateTotal(selectedOrder.items);
       const ref = doc(db, 'orders', selectedOrder.id);
   
+      // Cambiar estado a "Pagado"
       await updateDoc(ref, { status: 'Pagado' });
   
+      // Actualizar inventario por cada producto
+      for (const item of selectedOrder.items) {
+        if (item.productId) {
+          const productRef = doc(db, 'products', item.productId);
+          await updateDoc(productRef, {
+            stock: Math.max(0, item.stock - item.quantity), // si tienes el stock en el item
+          });
+        }
+      }
+  
+      // Generar recibo
       await addDoc(collection(db, 'receipts'), {
         orderId: selectedOrder.id,
         tableNumber: selectedOrder.tableNumber,
@@ -64,11 +76,10 @@ export default function CashierScreen() {
       Alert.alert('✅ Pago confirmado', `Pedido ${selectedOrder.id} fue marcado como pagado`);
       setSelectedOrder(null);
     } catch (error) {
-      console.error('Error al marcar como pagado o guardar recibo:', error);
+      console.error('Error al marcar como pagado o actualizar inventario:', error);
       Alert.alert('Error', 'No se pudo completar el pago.');
     }
-  };
-  
+  }; 
 
   return (
     <View style={styles.container}>
