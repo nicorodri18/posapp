@@ -151,7 +151,6 @@ export default function POSAppScreen() {
                 <Text style={styles.deleteButtonText}>Eliminar Mesa</Text>
               </TouchableOpacity>
 
-              {/* QR dinámico */}
               <View style={{ marginTop: 10, alignItems: 'center' }}>
                 <QRCode value={`mesa_${item.id}`} size={100} />
                 <Text style={{ marginTop: 5, fontSize: 12 }}>QR mesa_{item.id}</Text>
@@ -195,6 +194,16 @@ export default function POSAppScreen() {
               }}
             >
               <Text style={styles.drawerOptionText}>Ver Pedidos (Cocina)</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.drawerOption}
+              onPress={() => {
+                router.push('/cashier/CashierScreen');
+                setDrawerOpen(false);
+              }}
+            >
+              <Text style={styles.drawerOptionText}>Ir a Caja</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
