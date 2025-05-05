@@ -1,102 +1,93 @@
-// app/client/MenuScreen.tsx
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useRouter } from 'expo-router';
+import { getAuth, signOut } from 'firebase/auth';
+import { collection, getDocs, query, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
-import { Alert, Button, StyleSheet, Text, View } from 'react-native';
-import { auth, db } from '../../firebaseConfig'; // Firebase configuration
+import { ActivityIndicator, Button, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { db } from '../../firebaseConfig';
 
 export default function MenuScreen() {
-  const [userData, setUserData] = useState({ name: '', points: 0 });
-  const [productList, setProductList] = useState([
-    { id: '1', name: 'Producto 1', pointsRequired: 100 },
-    { id: '2', name: 'Producto 2', pointsRequired: 200 },
-  ]);
+  const [loading, setLoading] = useState(true);
+  const [userData, setUserData] = useState<any>(null);
+  const router = useRouter();
+
+  const auth = getAuth();
+  const user = auth.currentUser;
 
   useEffect(() => {
     const fetchUserData = async () => {
-      const user = auth.currentUser;
-      if (user) {
-        try {
-          const userDocRef = doc(db, 'users', user.uid);
-          const userDoc = await getDoc(userDocRef);
-          
-          if (userDoc.exists()) {
-            setUserData(userDoc.data());
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-          Alert.alert('Error', 'No se pudo cargar la información del usuario.');
+      if (!user) return;
+
+      try {
+        const q = query(collection(db, 'users'), where('email', '==', user.email));
+        const snapshot = await getDocs(q);
+
+        if (!snapshot.empty) {
+          const docData = snapshot.docs[0].data();
+          setUserData(docData);
         }
+      } catch (error) {
+        console.error('Error al obtener los datos del usuario:', error);
+      } finally {
+        setLoading(false);
       }
     };
 
     fetchUserData();
-  }, []);
+  }, [user]);
 
-  // Función para canjear puntos
-  const handleRedeemProduct = async (productId: string, pointsRequired: number) => {
-    if (userData.points >= pointsRequired) {
-      const newPoints = userData.points - pointsRequired;
-      const user = auth.currentUser;
-
-      try {
-        const userDocRef = doc(db, 'users', user.uid);
-        // Actualizar los puntos en Firestore
-        await updateDoc(userDocRef, { points: newPoints });
-        setUserData({ ...userData, points: newPoints });
-
-        Alert.alert('Canje Exitoso', `Has canjeado el producto ${productId}.`);
-      } catch (error) {
-        console.error('Error redeeming product:', error);
-        Alert.alert('Error', 'No se pudo realizar el canje.');
-      }
-    } else {
-      Alert.alert('Error', 'No tienes suficientes puntos.');
-    }
+  const handleLogout = async () => {
+    await signOut(auth);
+    router.replace('/');
   };
+
+  if (loading) {
+    return (
+      <View style={styles.container}>
+        <ActivityIndicator size="large" color="#e60012" />
+      </View>
+    );
+  }
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Menú de Canje</Text>
-      <Text style={styles.subtitle}>Puntos disponibles: {userData.points}</Text>
+      <Text style={styles.title}>¡Hola, {userData?.name || 'Cliente'}!</Text>
+      <Text style={styles.points}>Tienes {userData?.points ?? 0} puntos</Text>
 
-      {productList.map(product => (
-        <View key={product.id} style={styles.productItem}>
-          <Text>{product.name}</Text>
-          <Text>Puntos requeridos: {product.pointsRequired}</Text>
-          <Button
-            title={`Canjear ${product.name}`}
-            onPress={() => handleRedeemProduct(product.id, product.pointsRequired)}
-          />
-        </View>
-      ))}
+      <View style={styles.section}>
+        <TouchableOpacity style={styles.sectionButton} onPress={() => alert('Canjeo de puntos próximamente')}>
+          <Text style={styles.sectionText}>🎁 Canjear puntos</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.sectionButton} onPress={() => alert('Historial de compras próximamente')}>
+          <Text style={styles.sectionText}>🛒 Historial de compras</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.sectionButton} onPress={() => alert('Perfil próximamente')}>
+          <Text style={styles.sectionText}>👤 Mi perfil</Text>
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.logoutButton}>
+        <Button title="Cerrar sesión" color="#e60012" onPress={handleLogout} />
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    justifyContent: 'center',
+  container: { flex: 1, padding: 20, justifyContent: 'center', backgroundColor: '#fff' },
+  title: { fontSize: 26, fontWeight: 'bold', marginBottom: 10, textAlign: 'center', color: '#222' },
+  points: { fontSize: 20, textAlign: 'center', marginBottom: 30, color: '#444' },
+  section: { gap: 15, alignItems: 'center' },
+  sectionButton: {
+    backgroundColor: '#f5f5f5',
+    paddingVertical: 15,
+    paddingHorizontal: 25,
+    borderRadius: 10,
+    width: '90%',
     alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 20,
+    elevation: 2,
   },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginBottom: 20,
-  },
-  subtitle: {
-    fontSize: 18,
-    marginVertical: 10,
-  },
-  productItem: {
-    marginVertical: 10,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    width: '80%',
-    alignItems: 'center',
-  },
+  sectionText: { fontSize: 18, color: '#333' },
+  logoutButton: { marginTop: 40 },
 });
