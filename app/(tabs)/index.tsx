@@ -1,8 +1,8 @@
-// app/tabs/index.tsx
 import { useRouter } from 'expo-router';
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  updateProfile,
 } from 'firebase/auth';
 import React, { useState } from 'react';
 import {
@@ -15,12 +15,13 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
-import { auth } from '../../firebaseConfig';
+import { auth, db } from '../../firebaseConfig'; // Asumiendo que tienes una referencia a tu base de datos Firebase
 
 export default function HomeScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [name, setName] = useState(''); // Nuevo campo para el nombre
   const [isRegistering, setIsRegistering] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -28,25 +29,35 @@ export default function HomeScreen() {
     setIsLoading(true);
     try {
       if (isRegistering) {
-        await createUserWithEmailAndPassword(auth, email, password);
+        // Crear cuenta de usuario
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+
+        // Actualizar el perfil con el nombre
+        await updateProfile(user, { displayName: name });
+
+        // Crear documento para almacenar puntos
+        await db.collection('users').doc(user.uid).set({
+          name,
+          email,
+          points: 0, // Puntos iniciales
+        });
+
         Alert.alert('Cuenta creada', 'Puedes iniciar sesión ahora.');
         setIsRegistering(false);
         setIsLoading(false);
         return;
       }
 
-      await signInWithEmailAndPassword(auth, email, password);
+      // Iniciar sesión con cuenta existente
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
 
-      if (email === 'admin@gmail.com') {
-        // Solo este usuario puede ingresar como admin
-        if (password === '123456') {
-          router.replace('/posapp/posapp'); // Ruta de administrador
-        } else {
-          Alert.alert('Error', 'Contraseña incorrecta para administrador');
-          await auth.signOut(); // Salir si la clave no es válida
-        }
+      // Verificar si es admin o cliente
+      if (user.email === 'admin@gmail.com') {
+        router.replace('/adminDashboard'); // Ruta de administrador
       } else {
-        router.replace('/client/MenuScreen'); // Ruta del cliente
+        router.replace('/client/ProfileScreen'); // Ruta de cliente con su perfil y puntos
       }
     } catch (error: any) {
       Alert.alert('Error', error.message);
@@ -57,16 +68,27 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <Image source={require('../../assets/images/pos-logo.png')} style={styles.logo} />
+      <Image source={require('../../assets/images/logo.png')} style={styles.logo} />
 
       <Text style={styles.title}>
-        {isRegistering ? 'Crear Cuenta en POSAPP' : 'Iniciar Sesión en POSAPP'}
+        {isRegistering ? 'Crear Cuenta' : 'Iniciar Sesión'}
       </Text>
+
+      {isRegistering && (
+        <TextInput
+          style={styles.input}
+          placeholder="Nombre completo"
+          placeholderTextColor="#999"
+          value={name}
+          onChangeText={setName}
+          autoCapitalize="words"
+        />
+      )}
 
       <TextInput
         style={styles.input}
         placeholder="Correo electrónico"
-        placeholderTextColor="#ccc"
+        placeholderTextColor="#999"
         value={email}
         onChangeText={setEmail}
         autoCapitalize="none"
@@ -76,7 +98,7 @@ export default function HomeScreen() {
       <TextInput
         style={styles.input}
         placeholder="Contraseña"
-        placeholderTextColor="#ccc"
+        placeholderTextColor="#999"
         value={password}
         onChangeText={setPassword}
         secureTextEntry
@@ -103,31 +125,50 @@ export default function HomeScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    flex: 1, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#1e1e1e', paddingHorizontal: 20,
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#fff', // Fondo blanco
+    paddingHorizontal: 20,
   },
   logo: {
-    width: 120, height: 120,
-    resizeMode: 'contain', marginBottom: 20,
+    width: 120,
+    height: 120,
+    resizeMode: 'contain',
+    marginBottom: 20,
   },
   title: {
-    fontSize: 22, color: 'white',
-    fontWeight: 'bold', marginBottom: 10,
+    fontSize: 22,
+    color: '#e60012', // Rojo similar a Puntos Colombia
+    fontWeight: 'bold',
+    marginBottom: 10,
   },
   input: {
-    width: '85%', backgroundColor: '#2a2a2a',
-    color: 'white', padding: 12, marginBottom: 12,
-    borderRadius: 5, fontSize: 16,
+    width: '85%',
+    backgroundColor: '#f1f1f1', // Fondo gris claro para los inputs
+    color: '#333', // Color de texto oscuro
+    padding: 12,
+    marginBottom: 12,
+    borderRadius: 8, // Bordes más redondeados
+    fontSize: 16,
   },
   button: {
-    backgroundColor: '#ff8c00', padding: 12,
-    borderRadius: 5, width: '85%',
-    alignItems: 'center', marginVertical: 10,
+    backgroundColor: '#e60012', // Rojo de Puntos Colombia
+    padding: 12,
+    borderRadius: 8, // Bordes más redondeados
+    width: '85%',
+    alignItems: 'center',
+    marginVertical: 10,
   },
   buttonText: {
-    color: 'white', fontSize: 16, fontWeight: 'bold',
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
   linkText: {
-    color: '#ff8c00', marginTop: 12, fontSize: 14,
+    color: '#e60012', // Rojo de Puntos Colombia
+    marginTop: 12,
+    fontSize: 14,
+    textDecorationLine: 'underline', // Subrayado
   },
 });
