@@ -15,21 +15,20 @@ import {
   Alert,
   FlatList,
   Image,
-  ScrollView,
-  StyleSheet,
-  Text,
+  Picker,
+  ScrollView, StyleSheet, Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
 import { db } from '../../firebaseConfig';
 import { supabase } from '../../supabaseClient';
-
 interface Product {
   id: string;
   name: string;
   price: number;
   imageUrl?: string | null;
+  category: string;
 }
 
 interface User {
@@ -48,6 +47,7 @@ export default function AdminDashboard() {
   // Estados para productos
   const [newProductName, setNewProductName] = useState('');
   const [newProductPrice, setNewProductPrice] = useState('');
+  const [newProductCategory, setNewProductCategory] = useState('');
   const [imageUri, setImageUri] = useState<string | null>(null);
   
   // Estados para usuarios
@@ -56,6 +56,9 @@ export default function AdminDashboard() {
   const [addingUser, setAddingUser] = useState(false);
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
+
+  // Lista de categorías predefinidas
+  const categories = ['Electrónica', 'Ropa', 'Hogar', 'Juguetes', 'Otros'];
 
   useEffect(() => {
     if (activeTab === 'products') {
@@ -145,8 +148,8 @@ export default function AdminDashboard() {
   };
 
   const handleAddProduct = async () => {
-    if (!newProductName || !newProductPrice) {
-      Alert.alert('Error', 'Por favor completa todos los campos');
+    if (!newProductName || !newProductPrice || !newProductCategory) {
+      Alert.alert('Error', 'Por favor completa todos los campos, incluyendo la categoría');
       return;
     }
 
@@ -166,10 +169,12 @@ export default function AdminDashboard() {
         name: newProductName,
         price,
         imageUrl,
+        category: newProductCategory,
       });
 
       setNewProductName('');
       setNewProductPrice('');
+      setNewProductCategory('');
       setImageUri(null);
       fetchProducts();
       Alert.alert('Éxito', 'Producto agregado correctamente');
@@ -237,6 +242,7 @@ export default function AdminDashboard() {
       <View style={styles.infoContainer}>
         <Text style={styles.name}>{item.name}</Text>
         <Text style={styles.price}>{item.price} puntos</Text>
+        <Text style={styles.category}>Categoría: {item.category}</Text>
       </View>
       <TouchableOpacity style={styles.deleteButton} onPress={() => handleDeleteProduct(item.id)}>
         <Text style={styles.deleteButtonText}>Eliminar</Text>
@@ -259,7 +265,6 @@ export default function AdminDashboard() {
     <View style={styles.container}>
       <Text style={styles.title}>Panel de Administración</Text>
       
-      {/* Pestañas personalizadas */}
       <View style={styles.tabContainer}>
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'products' && styles.activeTab]}
@@ -296,6 +301,16 @@ export default function AdminDashboard() {
                 value={newProductPrice}
                 onChangeText={setNewProductPrice}
               />
+              <Picker
+                selectedValue={newProductCategory}
+                onValueChange={(itemValue) => setNewProductCategory(itemValue)}
+                style={styles.picker}
+              >
+                <Picker.Item label="Selecciona una categoría" value="" />
+                {categories.map((category) => (
+                  <Picker.Item key={category} label={category} value={category} />
+                ))}
+              </Picker>
               <TouchableOpacity style={styles.imagePicker} onPress={pickImage}>
                 <Text style={styles.imagePickerText}>
                   {imageUri ? 'Imagen seleccionada' : 'Seleccionar imagen'}
@@ -390,7 +405,6 @@ export default function AdminDashboard() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -449,6 +463,16 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     fontSize: 16,
     color: '#333333',
+  },
+  picker: {
+    borderWidth: 1,
+    borderColor: '#D0D0D0',
+    borderRadius: 8,
+    marginBottom: 12,
+    backgroundColor: '#FFFFFF',
+    fontSize: 16,
+    color: '#333333',
+    padding: 12,
   },
   imagePicker: {
     backgroundColor: '#FFFFFF',
@@ -537,6 +561,11 @@ const styles = StyleSheet.create({
   price: {
     fontSize: 14,
     color: '#666666',
+  },
+  category: {
+    fontSize: 14,
+    color: '#666666',
+    marginTop: 4,
   },
   deleteButton: {
     backgroundColor: '#D32F2F',

@@ -5,12 +5,12 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { db } from '../../firebaseConfig';
-
 interface Product {
   id: string;
   name: string;
   price: number;
   imageUrl?: string;
+  category: string; // Nuevo campo para la categoría
 }
 
 interface CartItem extends Product {
@@ -192,6 +192,7 @@ export default function MenuScreen() {
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
         <Text style={styles.productPrice}>{item.price} puntos</Text>
+        <Text style={styles.productCategory}>Categoría: {item.category}</Text>
       </View>
       <TouchableOpacity style={styles.addButton} onPress={() => handleAddToCart(item)}>
         <Text style={styles.addButtonText}>Agregar</Text>
@@ -322,7 +323,6 @@ export default function MenuScreen() {
     </ScrollView>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -461,6 +461,12 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666666',
     fontFamily: 'Roboto',
+  },
+  productCategory: {
+    fontSize: 14,
+    color: '#666666',
+    fontFamily: 'Roboto',
+    marginTop: 4,
   },
   addButton: {
     backgroundColor: '#FFC107',
