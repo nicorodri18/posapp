@@ -5,12 +5,13 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 import { db } from '../../firebaseConfig';
+
 interface Product {
   id: string;
   name: string;
   price: number;
   imageUrl?: string;
-  category: string; // Nuevo campo para la categoría
+  category: string;
 }
 
 interface CartItem extends Product {
@@ -142,7 +143,6 @@ export default function MenuScreen() {
     }
 
     try {
-      // Registrar la compra
       const purchaseData = {
         userId: user?.uid,
         items: cart,
@@ -151,15 +151,12 @@ export default function MenuScreen() {
       };
       await addDoc(collection(db, 'purchaseHistory'), purchaseData);
 
-      // Actualizar los puntos del usuario
       const updatedPoints = userData.points - totalCost;
       await updateDoc(doc(db, 'users', userData.docId), { points: updatedPoints });
 
-      // Limpiar el carrito
       setCart([]);
       Alert.alert('Compra exitosa', `Tu compra de ${cart.length} productos ha sido procesada.`);
 
-      // Actualizar los datos del usuario y el historial
       fetchUserData();
       fetchPurchaseHistory();
     } catch (error) {
@@ -180,6 +177,10 @@ export default function MenuScreen() {
 
   const handleProfile = () => {
     router.push('/profile');
+  };
+
+  const handleChat = () => {
+    router.push('/chat');
   };
 
   const toggleHistory = () => {
@@ -244,6 +245,9 @@ export default function MenuScreen() {
       <View style={styles.header}>
         <Text style={styles.title}>¡Hola, {userData?.email || 'Cliente'}!</Text>
         <View style={styles.headerIcons}>
+          <TouchableOpacity onPress={handleChat} style={styles.iconButton}>
+            <Icon name="chat" size={28} color="#2196F3" />
+          </TouchableOpacity>
           <TouchableOpacity onPress={handleProfile} style={styles.iconButton}>
             <Icon name="person" size={28} color="#00A859" />
           </TouchableOpacity>
@@ -323,6 +327,7 @@ export default function MenuScreen() {
     </ScrollView>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
