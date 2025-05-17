@@ -38,6 +38,7 @@ export default function MenuScreen() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [activeSection, setActiveSection] = useState('catalog'); // Track the active section
   const router = useRouter();
   const auth = getAuth();
   const user = auth.currentUser;
@@ -176,11 +177,23 @@ export default function MenuScreen() {
   };
 
   const handleProfile = () => {
+    setActiveSection('profile');
     router.push('/profile');
   };
 
   const handleChat = () => {
+    setActiveSection('chat'); // Updated to use 'chat' for the wrench icon
     router.push('/chat');
+  };
+
+  const handleHome = () => {
+    setActiveSection('home');
+    router.push('/client/MenuScreen');
+  };
+
+  const handleCatalog = () => {
+    setActiveSection('catalog');
+    // Already on MenuScreen, no navigation needed
   };
 
   const toggleHistory = () => {
@@ -246,90 +259,148 @@ export default function MenuScreen() {
   }
 
   return (
-    <ScrollView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.title}>CATALOG</Text>
-        <View style={styles.headerIcons}>
-          <TouchableOpacity onPress={handleChat} style={styles.iconButton}>
-            <Icon name="chat" size={28} color="#2196F3" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleProfile} style={styles.iconButton}>
-            <Icon name="person" size={28} color="#00A859" />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout} style={styles.iconButton}>
-            <Icon name="logout" size={28} color="#D32F2F" />
-          </TouchableOpacity>
+    <View style={styles.container}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        {/* Header */}
+        <View style={styles.header}>
+          <Text style={styles.title}>CATALOG</Text>
+          <View style={styles.headerIcons}>
+            <TouchableOpacity onPress={handleChat} style={styles.iconButton}>
+              <Icon name="chat" size={28} color="#2196F3" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleProfile} style={styles.iconButton}>
+              <Icon name="person" size={28} color="#00A859" />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={handleLogout} style={styles.iconButton}>
+              <Icon name="logout" size={28} color="#D32F2F" />
+            </TouchableOpacity>
+          </View>
         </View>
-      </View>
 
-      {/* Points Card */}
-      <View style={styles.pointsCard}>
-        <Text style={styles.pointsLabel}>Points</Text>
-        <Text style={styles.pointsValue}>{userData?.points ?? 0}</Text>
-        <Text style={styles.pointsLabel}>Available</Text>
-        <Text style={styles.expiryText}>Expire on</Text>
-        <Text style={styles.expiryDate}>25/May/2026</Text>
-      </View>
+        {/* Points Card */}
+        <View style={styles.pointsCard}>
+          <Text style={styles.pointsLabel}>Points</Text>
+          <Text style={styles.pointsValue}>{userData?.points ?? 0}</Text>
+          <Text style={styles.pointsLabel}>Available</Text>
+          <Text style={styles.expiryText}>Expire on</Text>
+          <Text style={styles.expiryDate}>25/May/2026</Text>
+        </View>
 
-      {/* Products */}
-      <FlatList
-        data={products}
-        renderItem={renderProduct}
-        keyExtractor={(item) => item.id}
-        numColumns={2}
-        columnWrapperStyle={styles.productsRow}
-        contentContainerStyle={styles.productsList}
-        ListHeaderComponent={<Text style={styles.sectionTitle}>Productos Disponibles</Text>}
-      />
+        {/* Products */}
+        <FlatList
+          data={products}
+          renderItem={renderProduct}
+          keyExtractor={(item) => item.id}
+          numColumns={2}
+          columnWrapperStyle={styles.productsRow}
+          contentContainerStyle={styles.productsList}
+          ListHeaderComponent={<Text style={styles.sectionTitle}>Productos Disponibles</Text>}
+        />
 
-      {/* History Toggle */}
-      <TouchableOpacity onPress={toggleHistory} style={styles.historyToggle}>
-        <Text style={styles.historyToggleText}>
-          {showHistory ? 'Ocultar historial' : 'Mostrar historial de canjes'}
-        </Text>
-        <Icon name={showHistory ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={24} color="#00A859" />
-      </TouchableOpacity>
+        {/* History Toggle */}
+        <TouchableOpacity onPress={toggleHistory} style={styles.historyToggle}>
+          <Text style={styles.historyToggleText}>
+            {showHistory ? 'Ocultar historial' : 'Mostrar historial de canjes'}
+          </Text>
+          <Icon name={showHistory ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={24} color="#00A859" />
+        </TouchableOpacity>
 
-      {/* Purchase History */}
-      {showHistory && (
-        <View style={styles.historySection}>
-          {purchaseHistory.length === 0 ? (
-            <Text style={styles.emptyText}>No hay registros de canjes</Text>
+        {/* Purchase History */}
+        {showHistory && (
+          <View style={styles.historySection}>
+            {purchaseHistory.length === 0 ? (
+              <Text style={styles.emptyText}>No hay registros de canjes</Text>
+            ) : (
+              <FlatList
+                data={purchaseHistory}
+                keyExtractor={(item) => item.id}
+                renderItem={renderHistoryItem}
+                scrollEnabled={false}
+              />
+            )}
+          </View>
+        )}
+
+        {/* Shopping Cart */}
+        <View style={styles.cartSection}>
+          <Text style={styles.sectionTitle}>Carrito</Text>
+          {cart.length === 0 ? (
+            <Text style={styles.emptyText}>Tu carrito está vacío</Text>
           ) : (
-            <FlatList
-              data={purchaseHistory}
-              keyExtractor={(item) => item.id}
-              renderItem={renderHistoryItem}
-              scrollEnabled={false}
-            />
+            <>
+              <FlatList
+                data={cart}
+                keyExtractor={(item) => item.id}
+                renderItem={renderCartItem}
+                scrollEnabled={false}
+              />
+              <Text style={styles.cartTotal}>
+                Total: {cart.reduce((sum, item) => sum + item.price * item.quantity, 0)} pts
+              </Text>
+              <TouchableOpacity style={styles.redeemButton} onPress={handleRedeemCart}>
+                <Text style={styles.redeemButtonText}>Canjear</Text>
+              </TouchableOpacity>
+            </>
           )}
         </View>
-      )}
+      </ScrollView>
 
-      {/* Shopping Cart */}
-      <View style={styles.cartSection}>
-        <Text style={styles.sectionTitle}>Carrito</Text>
-        {cart.length === 0 ? (
-          <Text style={styles.emptyText}>Tu carrito está vacío</Text>
-        ) : (
-          <>
-            <FlatList
-              data={cart}
-              keyExtractor={(item) => item.id}
-              renderItem={renderCartItem}
-              scrollEnabled={false}
-            />
-            <Text style={styles.cartTotal}>
-              Total: {cart.reduce((sum, item) => sum + item.price * item.quantity, 0)} pts
-            </Text>
-            <TouchableOpacity style={styles.redeemButton} onPress={handleRedeemCart}>
-              <Text style={styles.redeemButtonText}>Canjear</Text>
-            </TouchableOpacity>
-          </>
-        )}
+      {/* Bottom Navigation Bar */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            activeSection === 'catalog' && styles.navButtonActive,
+          ]}
+          onPress={handleCatalog}
+        >
+          <Icon
+            name="attach-money"
+            size={28}
+            color={activeSection === 'catalog' ? '#fff' : '#666'}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            activeSection === 'home' && styles.navButtonActive,
+          ]}
+          onPress={handleHome}
+        >
+          <Icon
+            name="home"
+            size={28}
+            color={activeSection === 'home' ? '#fff' : '#666'}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            activeSection === 'chat' && styles.navButtonActive, // Updated to 'chat'
+          ]}
+          onPress={handleChat} // Reused handleChat
+        >
+          <Icon
+            name="build"
+            size={28}
+            color={activeSection === 'chat' ? '#fff' : '#666'} // Updated to 'chat'
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            activeSection === 'profile' && styles.navButtonActive,
+          ]}
+          onPress={handleProfile}
+        >
+          <Icon
+            name="person"
+            size={28}
+            color={activeSection === 'profile' ? '#fff' : '#666'}
+          />
+        </TouchableOpacity>
       </View>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -337,6 +408,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f5f5f5',
+  },
+  scrollContent: {
+    paddingBottom: 80, // Space for the bottom navigation bar
   },
   centered: {
     flex: 1,
@@ -559,5 +633,32 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingVertical: 10,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  navButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    borderRadius: 25,
+  },
+  navButtonActive: {
+    backgroundColor: '#FF9800', // Orange background for active section
   },
 });
