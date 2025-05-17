@@ -178,7 +178,7 @@ export default function MenuScreen() {
 
   const handleProfile = () => {
     setActiveSection('profile');
-    router.push('/profile');
+    router.push('/EditProfile');
   };
 
   const handleChat = () => {
