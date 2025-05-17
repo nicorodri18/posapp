@@ -189,14 +189,20 @@ export default function MenuScreen() {
 
   const renderProduct = ({ item }: { item: Product }) => (
     <View style={styles.productContainer}>
-      {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.productImage} />}
-      <View style={styles.productInfo}>
+      <View style={styles.productHeader}>
         <Text style={styles.productName}>{item.name}</Text>
-        <Text style={styles.productPrice}>{item.price} puntos</Text>
-        <Text style={styles.productCategory}>Categoría: {item.category}</Text>
+        <Text style={styles.productPoints}>{item.price} pts</Text>
       </View>
-      <TouchableOpacity style={styles.addButton} onPress={() => handleAddToCart(item)}>
-        <Text style={styles.addButtonText}>Agregar</Text>
+      {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.productImage} />}
+      <TouchableOpacity 
+        style={[
+          styles.addButton,
+          (!userData || userData.points < item.price) && styles.disabledButton
+        ]} 
+        onPress={() => handleAddToCart(item)}
+        disabled={!userData || userData.points < item.price}
+      >
+        <Text style={styles.addButtonText}>Canjear</Text>
       </TouchableOpacity>
     </View>
   );
@@ -227,7 +233,7 @@ export default function MenuScreen() {
           </Text>
         ))}
       </View>
-      <Text style={styles.historyTotal}>Total: {item.total} puntos</Text>
+      <Text style={styles.historyTotal}>Total: {item.total} pts</Text>
     </View>
   );
 
@@ -241,9 +247,9 @@ export default function MenuScreen() {
 
   return (
     <ScrollView style={styles.container}>
-      {/* Encabezado */}
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>¡Hola, {userData?.email || 'Cliente'}!</Text>
+        <Text style={styles.title}>CATALOG</Text>
         <View style={styles.headerIcons}>
           <TouchableOpacity onPress={handleChat} style={styles.iconButton}>
             <Icon name="chat" size={28} color="#2196F3" />
@@ -256,9 +262,28 @@ export default function MenuScreen() {
           </TouchableOpacity>
         </View>
       </View>
-      <Text style={styles.points}>Tienes {userData?.points ?? 0} puntos</Text>
 
-      {/* Botón para mostrar/ocultar historial */}
+      {/* Points Card */}
+      <View style={styles.pointsCard}>
+        <Text style={styles.pointsLabel}>Points</Text>
+        <Text style={styles.pointsValue}>{userData?.points ?? 0}</Text>
+        <Text style={styles.pointsLabel}>Available</Text>
+        <Text style={styles.expiryText}>Expire on</Text>
+        <Text style={styles.expiryDate}>25/May/2026</Text>
+      </View>
+
+      {/* Products */}
+      <FlatList
+        data={products}
+        renderItem={renderProduct}
+        keyExtractor={(item) => item.id}
+        numColumns={2}
+        columnWrapperStyle={styles.productsRow}
+        contentContainerStyle={styles.productsList}
+        ListHeaderComponent={<Text style={styles.sectionTitle}>Productos Disponibles</Text>}
+      />
+
+      {/* History Toggle */}
       <TouchableOpacity onPress={toggleHistory} style={styles.historyToggle}>
         <Text style={styles.historyToggleText}>
           {showHistory ? 'Ocultar historial' : 'Mostrar historial de canjes'}
@@ -266,12 +291,9 @@ export default function MenuScreen() {
         <Icon name={showHistory ? 'keyboard-arrow-up' : 'keyboard-arrow-down'} size={24} color="#00A859" />
       </TouchableOpacity>
 
-      {/* Historial de canjes */}
+      {/* Purchase History */}
       {showHistory && (
         <View style={styles.historySection}>
-          <Text style={styles.sectionTitle}>
-            <Icon name="history" size={20} color="#333333" /> Historial de Canjes
-          </Text>
           {purchaseHistory.length === 0 ? (
             <Text style={styles.emptyText}>No hay registros de canjes</Text>
           ) : (
@@ -280,31 +302,14 @@ export default function MenuScreen() {
               keyExtractor={(item) => item.id}
               renderItem={renderHistoryItem}
               scrollEnabled={false}
-              contentContainerStyle={styles.historyList}
             />
           )}
         </View>
       )}
 
-      {/* Catálogo */}
-      <View style={styles.catalogSection}>
-        <Text style={styles.sectionTitle}>
-          <Icon name="store" size={20} color="#333333" /> Catálogo
-        </Text>
-        <FlatList
-          data={products}
-          keyExtractor={(item) => item.id}
-          renderItem={renderProduct}
-          contentContainerStyle={styles.catalogList}
-          ListEmptyComponent={<Text style={styles.emptyText}>No hay productos disponibles</Text>}
-        />
-      </View>
-
-      {/* Carrito */}
+      {/* Shopping Cart */}
       <View style={styles.cartSection}>
-        <Text style={styles.sectionTitle}>
-          <Icon name="shopping-cart" size={20} color="#333333" /> Carrito
-        </Text>
+        <Text style={styles.sectionTitle}>Carrito</Text>
         {cart.length === 0 ? (
           <Text style={styles.emptyText}>Tu carrito está vacío</Text>
         ) : (
@@ -313,10 +318,10 @@ export default function MenuScreen() {
               data={cart}
               keyExtractor={(item) => item.id}
               renderItem={renderCartItem}
-              contentContainerStyle={styles.cartList}
+              scrollEnabled={false}
             />
             <Text style={styles.cartTotal}>
-              Total: {cart.reduce((sum, item) => sum + item.price * item.quantity, 0)} puntos
+              Total: {cart.reduce((sum, item) => sum + item.price * item.quantity, 0)} pts
             </Text>
             <TouchableOpacity style={styles.redeemButton} onPress={handleRedeemCart}>
               <Text style={styles.redeemButtonText}>Canjear</Text>
@@ -331,8 +336,7 @@ export default function MenuScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    padding: 20,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: '#f5f5f5',
   },
   centered: {
     flex: 1,
@@ -343,217 +347,217 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    padding: 20,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
+  },
+  title: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
   },
   headerIcons: {
     flexDirection: 'row',
-    gap: 15,
   },
   iconButton: {
-    padding: 5,
+    marginLeft: 15,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#00A859',
-    fontFamily: 'Roboto',
-  },
-  points: {
-    fontSize: 20,
-    textAlign: 'center',
-    marginBottom: 20,
-    color: '#333333',
-    fontFamily: 'Roboto',
-    fontWeight: '500',
-  },
-  historyToggle: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 10,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    marginBottom: 15,
-    elevation: 1,
-  },
-  historyToggleText: {
-    fontSize: 16,
-    color: '#00A859',
-    fontWeight: '600',
-    marginRight: 5,
-  },
-  historySection: {
-    backgroundColor: '#FFFFFF',
-    padding: 15,
+  pointsCard: {
+    backgroundColor: '#fff',
     borderRadius: 10,
-    marginBottom: 20,
-    elevation: 2,
-  },
-  historyList: {
-    paddingBottom: 10,
-  },
-  historyItem: {
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-  },
-  historyDate: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    marginBottom: 5,
-  },
-  historyItems: {
-    marginLeft: 10,
-    marginBottom: 5,
-  },
-  historyProduct: {
-    fontSize: 14,
-    color: '#666666',
-    marginVertical: 2,
-  },
-  historyTotal: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#00A859',
-    textAlign: 'right',
-    marginTop: 5,
-  },
-  catalogSection: {
-    marginTop: 20,
-  },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    color: '#333333',
-    marginBottom: 10,
-    fontFamily: 'Roboto',
-  },
-  catalogList: {
-    paddingVertical: 10,
-  },
-  productContainer: {
-    flexDirection: 'row',
+    padding: 20,
+    margin: 20,
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 12,
-    elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
+    elevation: 3,
   },
-  productImage: {
-    width: 70,
-    height: 70,
-    marginRight: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#E0E0E0',
+  pointsLabel: {
+    fontSize: 16,
+    color: '#666',
   },
-  productInfo: {
-    flex: 1,
+  pointsValue: {
+    fontSize: 36,
+    fontWeight: 'bold',
+    color: '#00A859',
+    marginVertical: 10,
+  },
+  expiryText: {
+    fontSize: 14,
+    color: '#666',
+    marginTop: 10,
+  },
+  expiryDate: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+  },
+  sectionTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    color: '#333',
+    marginLeft: 15,
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  productsList: {
+    paddingHorizontal: 10,
+    paddingBottom: 20,
+  },
+  productsRow: {
+    justifyContent: 'space-between',
+    paddingHorizontal: 10,
+    marginBottom: 15,
+  },
+  productContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    width: '48%',
+    padding: 15,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  productHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 10,
   },
   productName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333333',
-    fontFamily: 'Roboto',
+    fontWeight: 'bold',
+    color: '#333',
+    flex: 1,
   },
-  productPrice: {
-    fontSize: 14,
-    color: '#666666',
-    fontFamily: 'Roboto',
+  productPoints: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#00A859',
+    marginLeft: 10,
   },
-  productCategory: {
-    fontSize: 14,
-    color: '#666666',
-    fontFamily: 'Roboto',
-    marginTop: 4,
+  productImage: {
+    width: '100%',
+    height: 100,
+    borderRadius: 5,
+    marginBottom: 15,
+    resizeMode: 'cover',
   },
   addButton: {
-    backgroundColor: '#FFC107',
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    elevation: 2,
+    backgroundColor: '#00A859',
+    borderRadius: 5,
+    padding: 10,
+    alignItems: 'center',
+  },
+  disabledButton: {
+    backgroundColor: '#cccccc',
   },
   addButtonText: {
-    color: '#333333',
-    fontSize: 14,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
+    color: '#fff',
+    fontWeight: 'bold',
+  },
+  historyToggle: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 15,
+    backgroundColor: '#fff',
+    marginTop: 20,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  historyToggleText: {
+    fontSize: 16,
+    color: '#00A859',
+    marginRight: 5,
+  },
+  historySection: {
+    backgroundColor: '#fff',
+    padding: 15,
+  },
+  emptyText: {
+    textAlign: 'center',
+    color: '#666',
+    marginVertical: 20,
+  },
+  historyItem: {
+    backgroundColor: '#f9f9f9',
+    borderRadius: 5,
+    padding: 10,
+    marginBottom: 10,
+  },
+  historyDate: {
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+  },
+  historyItems: {
+    marginBottom: 5,
+  },
+  historyProduct: {
+    color: '#666',
+  },
+  historyTotal: {
+    fontWeight: 'bold',
+    color: '#00A859',
+    textAlign: 'right',
   },
   cartSection: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#fff',
     padding: 15,
-    borderRadius: 10,
     marginTop: 20,
-    marginBottom: 20,
-    elevation: 2,
-  },
-  cartList: {
-    paddingBottom: 10,
+    borderTopWidth: 1,
+    borderColor: '#e0e0e0',
   },
   cartItem: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingVertical: 8,
+    alignItems: 'center',
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: '#eee',
   },
   cartItemName: {
-    flex: 1,
-    fontSize: 16,
-    color: '#333333',
-    fontFamily: 'Roboto',
+    flex: 2,
+    color: '#333',
   },
   quantityControls: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
+    flex: 1,
+    justifyContent: 'center',
   },
   quantityText: {
-    fontSize: 16,
-    color: '#333333',
-    fontFamily: 'Roboto',
+    marginHorizontal: 10,
+    color: '#333',
   },
   cartItemPrice: {
-    fontSize: 14,
-    color: '#666666',
-    fontFamily: 'Roboto',
+    flex: 1,
+    textAlign: 'right',
+    color: '#333',
   },
   cartTotal: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333333',
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#333',
     textAlign: 'right',
     marginTop: 10,
-    fontFamily: 'Roboto',
   },
   redeemButton: {
     backgroundColor: '#00A859',
+    borderRadius: 5,
     padding: 15,
-    borderRadius: 8,
     alignItems: 'center',
-    marginTop: 10,
-    elevation: 3,
+    marginTop: 15,
   },
   redeemButtonText: {
-    color: '#FFFFFF',
+    color: '#fff',
+    fontWeight: 'bold',
     fontSize: 16,
-    fontWeight: '600',
-    fontFamily: 'Roboto',
-  },
-  emptyText: {
-    fontSize: 16,
-    color: '#666666',
-    textAlign: 'center',
-    fontStyle: 'italic',
-    marginVertical: 10,
-    fontFamily: 'Roboto',
   },
 });
