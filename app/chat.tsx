@@ -1,109 +1,104 @@
 import { FontAwesome } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import {
-    addDoc,
-    collection,
-    doc,
-    onSnapshot,
-    orderBy,
-    query,
-    setDoc,
+  addDoc,
+  collection,
+  doc,
+  onSnapshot,
+  orderBy,
+  query,
+  setDoc,
 } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-    ActivityIndicator,
-    FlatList,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
-import { auth, db } from '../firebaseConfig'; // Asegúrate de que la ruta sea correcta
+import { auth, db } from '../firebaseConfig'; // Adjust the path as needed
 
-// Clave de API de Gemini
 const GEMINI_API_KEY = 'AIzaSyDgRJaK0CdL1bnu2PbBV_xV1Ml_6W7skt0';
 
 export default function ChatScreen() {
   const router = useRouter();
   const user = auth.currentUser;
+  const flatListRef = useRef<FlatList>(null);
 
-  // Estado
   const [messages, setMessages] = useState<{ text: string; sender: string }[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [chatList, setChatList] = useState<any[]>([]);
   const [currentChatId, setCurrentChatId] = useState<string | null>(null);
-  const [showHistory, setShowHistory] = useState(false);
 
-  // Verificar autenticación
   useEffect(() => {
-    if (!user) {
-      router.replace('/');
-    }
+    if (!user) router.replace('/');
   }, [user]);
 
-  // Cargar lista de chats
+  // Load list of chats and select the most recent one automatically
   useEffect(() => {
     if (!user) return;
-
     const userChatsRef = collection(db, 'chats', user.uid, 'myChats');
     const q = query(userChatsRef, orderBy('createdAt', 'desc'));
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const loadedChats = snapshot.docs.map((doc) => ({
         id: doc.id,
-        createdAt: doc.data().createdAt?.toDate().toLocaleString() || 'Sin fecha',
+        createdAt: doc.data().createdAt?.toDate().toLocaleString() || 'No date',
       }));
       setChatList(loadedChats);
+
+      if (!currentChatId && loadedChats.length > 0) {
+        setCurrentChatId(loadedChats[0].id);
+      }
     });
-
     return () => unsubscribe();
-  }, [user]);
+  }, [user, currentChatId]);
 
-  // Cargar mensajes del chat actual
+  // Load messages for the current chat
   useEffect(() => {
     if (!user || !currentChatId) return;
-
     const messagesRef = collection(db, 'chats', user.uid, 'myChats', currentChatId, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
-
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const loadedMsgs = snapshot.docs.map((doc) => ({
         text: doc.data().text,
         sender: doc.data().sender,
       }));
       setMessages(loadedMsgs);
+      // Scroll to the latest message
+      if (flatListRef.current && loadedMsgs.length > 0) {
+        flatListRef.current.scrollToEnd({ animated: true });
+      }
     });
-
     return () => unsubscribe();
   }, [user, currentChatId]);
 
-  // Crear nuevo chat
+  // Start a new chat
   const startNewChat = async () => {
     if (!user) return;
-
     const newChatRef = doc(collection(db, 'chats', user.uid, 'myChats'));
     await setDoc(newChatRef, { createdAt: new Date() });
-
     setCurrentChatId(newChatRef.id);
     setMessages([]);
   };
 
-  // Abrir un chat anterior
+  // Open selected chat
   const openChat = (chatId: string) => {
     setCurrentChatId(chatId);
-    setShowHistory(false);
   };
 
-  // Enviar mensaje
+  // Send message
   const sendMessage = async () => {
     if (!input.trim() || !currentChatId || !user) return;
 
     const userMessage = {
       text: input,
-      sender: user.email || 'Usuario',
+      sender: user.email || 'User',
       timestamp: new Date(),
     };
 
@@ -112,13 +107,8 @@ export default function ChatScreen() {
     setLoading(true);
 
     try {
-      // Guardar mensaje en Firebase
-      await addDoc(
-        collection(db, 'chats', user.uid, 'myChats', currentChatId, 'messages'),
-        userMessage
-      );
+      await addDoc(collection(db, 'chats', user.uid, 'myChats', currentChatId, 'messages'), userMessage);
 
-      // Llamar a Gemini
       const response = await fetch(
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GEMINI_API_KEY}`,
         {
@@ -131,235 +121,219 @@ export default function ChatScreen() {
       );
 
       const data = await response.json();
-      console.log('API Response:', data);
 
       const botResponse =
-        data?.candidates?.[0]?.content?.parts?.[0]?.text ||
-        'Error al procesar respuesta.';
+        data?.candidates?.[0]?.content?.parts?.[0]?.text || 'Error processing response.';
 
-      // Guardar respuesta en Firebase
       const botMessage = {
         text: botResponse,
         sender: 'Gemini',
         timestamp: new Date(),
       };
-      await addDoc(
-        collection(db, 'chats', user.uid, 'myChats', currentChatId, 'messages'),
-        botMessage
-      );
-    } catch (error) {
-      console.error('Error en la API:', error);
-      setMessages((prev) => [
-        ...prev,
-        { text: 'Error en la conexión con Gemini.', sender: 'Gemini' },
-      ]);
-    }
 
-    setLoading(false);
+      await addDoc(collection(db, 'chats', user.uid, 'myChats', currentChatId, 'messages'), botMessage);
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Navegar de vuelta a MenuScreen
-  const handleBack = () => {
-    router.replace('/client/MenuScreen'); // Navega a MenuScreen en app/client/MenuScreen.tsx
+  // Go back to MenuScreen
+  const goBack = () => {
+    router.replace('/client/MenuScreen'); // Updated path to reflect client folder
+  };
+
+  // Render each message
+  const renderMessage = ({ item }: { item: { text: string; sender: string } }) => {
+    const isUser = item.sender !== 'Gemini';
+    return (
+      <View
+        style={[
+          styles.messageContainer,
+          isUser ? styles.userMessage : styles.botMessage,
+        ]}
+      >
+        <Text style={styles.messageSender}>{isUser ? 'You' : 'Gemini'}</Text>
+        <Text style={styles.messageText}>{item.text}</Text>
+      </View>
+    );
   };
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
+    <KeyboardAvoidingView
+      style={styles.container}
+      behavior={Platform.select({ ios: 'padding', android: undefined })}
+      keyboardVerticalOffset={90}
+    >
       <View style={styles.header}>
-        <TouchableOpacity
-          onPress={handleBack}
-          style={styles.iconButton}
-        >
-          <FontAwesome name="arrow-left" size={24} color="#00A859" />
+        <TouchableOpacity onPress={goBack} style={styles.backButton}>
+          <FontAwesome name="arrow-left" size={20} color="#fff" />
         </TouchableOpacity>
-        <Text style={styles.title}>Chat con Gemini</Text>
+        <Text style={styles.headerTitle}>Chat with Gemini</Text>
+        <TouchableOpacity onPress={startNewChat} style={styles.newChatButton}>
+          <FontAwesome name="plus" size={20} color="#fff" />
+        </TouchableOpacity>
       </View>
 
-      {/* Botón ver/ocultar historial */}
-      <TouchableOpacity
-        style={styles.historyButton}
-        onPress={() => setShowHistory(!showHistory)}
-      >
-        <Text style={styles.historyButtonText}>
-          {showHistory ? 'Ocultar Historial' : 'Ver Historial de Chats'}
-        </Text>
-      </TouchableOpacity>
-
-      {/* Historial */}
-      {showHistory && (
+      <View style={styles.chatListContainer}>
         <FlatList
+          horizontal
           data={chatList}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.chatItem}
               onPress={() => openChat(item.id)}
+              style={[
+                styles.chatItem,
+                currentChatId === item.id && styles.chatItemSelected,
+              ]}
             >
-              <Text style={styles.chatText}>Chat Iniciado: {item.createdAt}</Text>
+              <Text style={styles.chatItemText}>{item.createdAt}</Text>
             </TouchableOpacity>
           )}
-          contentContainerStyle={styles.chatList}
+          showsHorizontalScrollIndicator={false}
         />
+      </View>
+
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        keyExtractor={(_, index) => index.toString()}
+        renderItem={renderMessage}
+        contentContainerStyle={styles.messagesList}
+      />
+
+      {loading && (
+        <ActivityIndicator size="large" color="#2e86de" style={styles.loading} />
       )}
 
-      {/* Botón para nuevo chat */}
-      <TouchableOpacity style={styles.newChatButton} onPress={startNewChat}>
-        <Text style={styles.newChatButtonText}>Iniciar Nuevo Chat</Text>
-      </TouchableOpacity>
-
-      {/* Chat actual */}
-      <ScrollView style={styles.chatContainer}>
-        {messages.map((msg, index) => (
-          <View
-            key={index}
-            style={[
-              styles.messageBubble,
-              msg.sender === user?.email
-                ? styles.userBubble
-                : styles.botBubble,
-            ]}
-          >
-            <Text style={styles.messageText}>
-              {msg.sender}: {msg.text}
-            </Text>
-          </View>
-        ))}
-        {loading && <ActivityIndicator size="small" color="#00A859" />}
-      </ScrollView>
-
-      {/* Input */}
       <View style={styles.inputContainer}>
         <TextInput
-          style={styles.input}
-          placeholder="Escribe un mensaje..."
-          placeholderTextColor="#666666"
           value={input}
           onChangeText={setInput}
+          style={styles.input}
+          placeholder="Type your message..."
+          multiline
         />
-        <TouchableOpacity
-          style={styles.sendButton}
-          onPress={sendMessage}
-          disabled={loading || !currentChatId}
-        >
-          <FontAwesome name="paper-plane" size={20} color="#FFFFFF" />
+        <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
+          <FontAwesome name="send" size={20} color="#fff" />
         </TouchableOpacity>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F5F5F5',
-    padding: 20,
-  },
+  container: { flex: 1, backgroundColor: '#f6f8fa' },
   header: {
+    backgroundColor: '#2e86de',
+    paddingVertical: 15,
+    paddingHorizontal: 20,
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 20,
+    alignItems: 'center',
   },
-  iconButton: {
-    padding: 5,
+  backButton: {
+    backgroundColor: '#1b4f72',
+    padding: 8,
+    borderRadius: 20,
+    marginRight: 10,
   },
-  title: {
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#00A859',
-    fontFamily: 'Roboto',
+  headerTitle: {
+    color: '#fff',
+    fontSize: 20,
+    fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',
   },
-  historyButton: {
-    backgroundColor: '#FFFFFF',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 15,
-    elevation: 2,
+  newChatButton: {
+    backgroundColor: '#1b4f72',
+    padding: 8,
+    borderRadius: 20,
   },
-  historyButtonText: {
-    fontSize: 16,
-    color: '#00A859',
-    fontWeight: '600',
-    fontFamily: 'Roboto',
-  },
-  chatList: {
-    paddingBottom: 10,
+  chatListContainer: {
+    backgroundColor: '#d6eaf8',
+    paddingVertical: 8,
   },
   chatItem: {
-    padding: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    marginBottom: 10,
-    elevation: 1,
+    backgroundColor: '#aed6f1',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 15,
+    marginHorizontal: 6,
   },
-  chatText: {
-    fontSize: 16,
-    color: '#333333',
-    fontFamily: 'Roboto',
+  chatItemSelected: {
+    backgroundColor: '#2e86de',
   },
-  newChatButton: {
-    backgroundColor: '#00A859',
-    padding: 15,
-    borderRadius: 8,
-    alignItems: 'center',
-    marginBottom: 15,
-    elevation: 3,
-  },
-  newChatButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
+  chatItemText: {
+    color: '#1b4f72',
     fontWeight: '600',
-    fontFamily: 'Roboto',
   },
-  chatContainer: {
-    flex: 1,
-    marginBottom: 10,
+  messagesList: {
+    flexGrow: 1,
+    paddingHorizontal: 15,
+    paddingBottom: 10,
   },
-  messageBubble: {
-    padding: 10,
-    marginVertical: 5,
-    borderRadius: 10,
-    maxWidth: '80%',
-  },
-  userBubble: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#00A859',
-  },
-  botBubble: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#FFFFFF',
+  messageContainer: {
+    maxWidth: '75%',
+    borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: '#ccc',
+    padding: 12,
+    marginVertical: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  userMessage: {
+    backgroundColor: '#2e86de',
+    alignSelf: 'flex-end',
+    borderColor: '#1b4f72',
+  },
+  botMessage: {
+    backgroundColor: '#ffffff',
+    alignSelf: 'flex-start',
+    borderColor: '#d6eaf8',
+  },
+  messageSender: {
+    fontWeight: 'bold',
+    marginBottom: 4,
+    color: '#333',
   },
   messageText: {
-    fontSize: 14,
-    color: '#333333',
-    fontFamily: 'Roboto',
+    color: '#333',
+    fontSize: 15,
   },
   inputContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    elevation: 2,
+    padding: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#ccc',
+    backgroundColor: '#fff',
   },
   input: {
     flex: 1,
+    backgroundColor: '#f0f3f5',
+    borderRadius: 25,
+    paddingHorizontal: 15,
     fontSize: 16,
-    color: '#333333',
-    paddingVertical: 10,
-    fontFamily: 'Roboto',
+    maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: '#00A859',
-    padding: 10,
-    borderRadius: 8,
+    backgroundColor: '#2e86de',
+    marginLeft: 10,
+    borderRadius: 25,
+    padding: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loading: {
+    position: 'absolute',
+    top: '50%',
+    left: '50%',
+    transform: [{ translateX: -15 }, { translateY: -15 }],
   },
 });
