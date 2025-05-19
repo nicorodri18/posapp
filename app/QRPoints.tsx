@@ -1,22 +1,24 @@
 import { MaterialIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router'; // Import useRouter for navigation
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import {
-    collection,
-    doc,
-    getDocs,
-    query,
-    updateDoc,
-    where,
+  collection,
+  doc,
+  getDocs,
+  query,
+  updateDoc,
+  where,
 } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
+import Icon from 'react-native-vector-icons/MaterialIcons'; // Import Icon for navigation bar icons
 import { db } from '../firebaseConfig';
 
 export default function QRPoints() {
@@ -25,6 +27,8 @@ export default function QRPoints() {
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState('points'); // Track active section, default to 'points'
+  const router = useRouter(); // Initialize router for navigation
 
   useEffect(() => {
     const auth = getAuth();
@@ -110,6 +114,27 @@ export default function QRPoints() {
       console.error('Error updating points:', error);
       setError('Error al actualizar los puntos. Por favor, intenta de nuevo.');
     }
+  };
+
+  // Navigation handlers
+  const handlePoints = () => {
+    setActiveSection('points');
+    router.push('/QRPoints'); // Already on QRPoints, but included for consistency
+  };
+
+  const handleHome = () => {
+    setActiveSection('home');
+    router.push('/client/MenuScreen');
+  };
+
+  const handleChat = () => {
+    setActiveSection('chat');
+    router.push('/chat');
+  };
+
+  const handleProfile = () => {
+    setActiveSection('profile');
+    router.push('/EditProfile');
   };
 
   if (loading) {
@@ -205,6 +230,62 @@ export default function QRPoints() {
           </TouchableOpacity>
         </View>
       )}
+
+      {/* Bottom Navigation Bar */}
+      <View style={styles.bottomNav}>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            activeSection === 'points' && styles.navButtonActive,
+          ]}
+          onPress={handlePoints}
+        >
+          <Icon
+            name="attach-money"
+            size={28}
+            color={activeSection === 'points' ? '#fff' : '#666'}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            activeSection === 'home' && styles.navButtonActive,
+          ]}
+          onPress={handleHome}
+        >
+          <Icon
+            name="home"
+            size={28}
+            color={activeSection === 'home' ? '#fff' : '#666'}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            activeSection === 'chat' && styles.navButtonActive,
+          ]}
+          onPress={handleChat}
+        >
+          <Icon
+            name="build"
+            size={28}
+            color={activeSection === 'chat' ? '#fff' : '#666'}
+          />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.navButton,
+            activeSection === 'profile' && styles.navButtonActive,
+          ]}
+          onPress={handleProfile}
+        >
+          <Icon
+            name="person"
+            size={28}
+            color={activeSection === 'profile' ? '#fff' : '#666'}
+          />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -214,6 +295,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
     padding: 20,
+    paddingBottom: 80, // Added padding to prevent overlap with bottom nav
   },
   centered: {
     flex: 1,
@@ -354,5 +436,33 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#FF6600',
     fontSize: 16,
+  },
+  // Added styles for bottom navigation bar
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e0e0e0',
+    paddingVertical: 10,
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    elevation: 5,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+  },
+  navButton: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    borderRadius: 25,
+  },
+  navButtonActive: {
+    backgroundColor: '#FF9800', // Orange background for active section
   },
 });

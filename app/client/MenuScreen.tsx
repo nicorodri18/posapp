@@ -38,7 +38,7 @@ export default function MenuScreen() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistory[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [activeSection, setActiveSection] = useState('catalog'); // Track the active section
+  const [activeSection, setActiveSection] = useState('catalog');
   const router = useRouter();
   const auth = getAuth();
   const user = auth.currentUser;
@@ -182,7 +182,7 @@ export default function MenuScreen() {
   };
 
   const handleChat = () => {
-    setActiveSection('chat'); // Updated to use 'chat' for the wrench icon
+    setActiveSection('chat');
     router.push('/chat');
   };
 
@@ -191,9 +191,9 @@ export default function MenuScreen() {
     router.push('/client/MenuScreen');
   };
 
-  const handleCatalog = () => {
-    setActiveSection('catalog');
-    // Already on MenuScreen, no navigation needed
+  const handlePoints = () => {
+    setActiveSection('points');
+    router.push('/QRPoints'); // Updated path to match QRPoints.tsx in app directory
   };
 
   const toggleHistory = () => {
@@ -350,14 +350,14 @@ export default function MenuScreen() {
         <TouchableOpacity
           style={[
             styles.navButton,
-            activeSection === 'catalog' && styles.navButtonActive,
+            activeSection === 'points' && styles.navButtonActive,
           ]}
-          onPress={handleCatalog}
+          onPress={handlePoints}
         >
           <Icon
             name="attach-money"
             size={28}
-            color={activeSection === 'catalog' ? '#fff' : '#666'}
+            color={activeSection === 'points' ? '#fff' : '#666'}
           />
         </TouchableOpacity>
         <TouchableOpacity
@@ -376,14 +376,14 @@ export default function MenuScreen() {
         <TouchableOpacity
           style={[
             styles.navButton,
-            activeSection === 'chat' && styles.navButtonActive, // Updated to 'chat'
+            activeSection === 'chat' && styles.navButtonActive,
           ]}
-          onPress={handleChat} // Reused handleChat
+          onPress={handleChat}
         >
           <Icon
             name="build"
             size={28}
-            color={activeSection === 'chat' ? '#fff' : '#666'} // Updated to 'chat'
+            color={activeSection === 'chat' ? '#fff' : '#666'}
           />
         </TouchableOpacity>
         <TouchableOpacity
@@ -410,7 +410,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#f5f5f5',
   },
   scrollContent: {
-    paddingBottom: 80, // Space for the bottom navigation bar
+    paddingBottom: 80,
   },
   centered: {
     flex: 1,
@@ -659,6 +659,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   navButtonActive: {
-    backgroundColor: '#FF9800', // Orange background for active section
+    backgroundColor: '#FF9800',
   },
 });

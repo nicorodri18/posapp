@@ -1,299 +1,156 @@
+// EditProfile.tsx
+
 import { MaterialIcons } from '@expo/vector-icons';
-import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
-import React, { useEffect, useState } from 'react';
-import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import QRCode from 'react-native-qrcode-svg';
+import { useRouter } from 'expo-router';
+import { getAuth } from 'firebase/auth';
+import { collection, doc, getDocs, query, updateDoc, where } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { db } from '../firebaseConfig';
 
-export default function QRPoints() {
-  const [user, setUser] = useState<User | null>(null);
-  const [userData, setUserData] = useState<any>(null);
+export default function EditProfile() {
+  const auth = getAuth();
+  const router = useRouter();
+  const user = auth.currentUser;
   const [loading, setLoading] = useState(true);
-  const [showQR, setShowQR] = useState(false);
+  const [updating, setUpdating] = useState(false);
+
+  const [docId, setDocId] = useState('');
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [photoURL, setPhotoURL] = useState('');
+  const [points, setPoints] = useState<number | null>(null);
 
   useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (!firebaseUser) {
-        setUser(null);
-        setUserData(null);
-        setLoading(false);
-        return;
-      }
-
-      setUser(firebaseUser);
-      try {
-        const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUserData(docSnap.data());
-        } else {
-          console.warn('No user data found in Firestore');
-          setUserData({ name: 'Usuario', points: 0, history: [] });
-        }
-      } catch (error) {
-        console.error('Error fetching user data:', error);
-        setUserData({ name: 'Usuario', points: 0, history: [] });
-      } finally {
-        setLoading(false);
-      }
-    });
-
-    return () => unsubscribe();
+    if (!user) {
+      router.replace('/login');
+      return;
+    }
+    fetchUserData(user.email);
   }, []);
 
-  // Simulate QR scan and point addition (replace with actual backend logic)
-  const handleQRScan = async () => {
-    if (!user) return;
-
+  const fetchUserData = async (email: string | null) => {
+    if (!email) return;
     try {
-      const docRef = doc(db, 'users', user.uid);
-      const newPoints = (userData.points || 0) + 125; // Add 125 points
-      const newHistory = [
-        ...(userData.history || []),
-        { date: new Date().toISOString(), points: 125, description: 'You got 125 points' },
-      ];
+      const q = query(collection(db, 'users'), where('email', '==', email));
+      const snapshot = await getDocs(q);
+      if (snapshot.empty) throw new Error('Usuario no encontrado');
 
-      await updateDoc(docRef, {
-        points: newPoints,
-        history: newHistory,
-      });
+      const docSnap = snapshot.docs[0];
+      const data = docSnap.data();
 
-      setUserData({ ...userData, points: newPoints, history: newHistory });
+      setDocId(docSnap.id);
+      setName(data.name);
+      setEmail(data.email);
+      setPhotoURL(data.photoURL || '');
+      setPoints(data.points || 0);
     } catch (error) {
-      console.error('Error updating points:', error);
+      Alert.alert('Error al obtener datos', (error as Error).message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!docId) return;
+    setUpdating(true);
+    try {
+      await updateDoc(doc(db, 'users', docId), {
+        name,
+        email,
+        photoURL,
+      });
+      Alert.alert('Éxito', 'Perfil actualizado correctamente');
+      router.back(); // Volver al perfil anterior
+    } catch (error) {
+      Alert.alert('Error al actualizar', (error as Error).message);
+    } finally {
+      setUpdating(false);
     }
   };
 
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#FF6600" />
-      </View>
-    );
-  }
-
-  if (!user || !userData) {
-    return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Por favor, inicia sesión para continuar</Text>
+        <ActivityIndicator size="large" />
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <MaterialIcons name="menu" size={24} color="#000" style={styles.menuIcon} />
-        <Text style={styles.headerTitle}>POINTS</Text>
-      </View>
-
-      {/* Points Card */}
-      <View style={styles.pointsCard}>
-        <View style={styles.avatarPlaceholder}>
-          <MaterialIcons name="person" size={40} color="#888" />
-        </View>
-        <View style={styles.pointsInfo}>
-          <Text style={styles.pointsLabel}>Available</Text>
-          <Text style={styles.points}>
-            <MaterialIcons name="monetization-on" size={24} color="#FFD700" /> {userData.points}
-          </Text>
-          <Text style={styles.expiry}>Expire on 25/MAY/2026</Text>
-        </View>
-      </View>
-
-      {/* History Section */}
-      <View style={styles.historyHeader}>
-        <Text style={styles.historyTitle}>HYSTORY</Text>
-        <Text style={styles.historyMore}>more</Text>
-      </View>
-      {(userData.history || []).length > 0 ? (
-        userData.history.slice(0, 1).map((entry: any, index: number) => (
-          <View key={index} style={styles.historyItem}>
-            <Text style={styles.historyDescription}>{entry.description}</Text>
-            <Text style={styles.historyDate}>
-              {new Date(entry.date).toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </Text>
-          </View>
-        ))
-      ) : (
-        <View style={styles.historyItem}>
-          <Text style={styles.historyDescription}>No history available</Text>
-        </View>
-      )}
-
-      {/* QR Button */}
-      <TouchableOpacity style={styles.qrButton} onPress={() => setShowQR(!showQR)}>
-        <Text style={styles.qrButtonText}>Get Points</Text>
-        <MaterialIcons name="qr-code" size={24} color="#fff" style={styles.qrIcon} />
+      <TouchableOpacity style={styles.avatarContainer}>
+        {photoURL ? (
+          <Image source={{ uri: photoURL }} style={styles.avatar} />
+        ) : (
+          <MaterialIcons name="person" size={80} color="#999" />
+        )}
       </TouchableOpacity>
 
-      {/* QR Code Modal (simplified for this example) */}
-      {showQR && (
-        <View style={styles.qrModal}>
-          <QRCode
-            value={`add-points:${user.uid}`} // Encodes user UID for scanning
-            size={250}
-            color="#000"
-            backgroundColor="#fff"
-          />
-          {/* Simulate QR scan for testing */}
-          <TouchableOpacity style={styles.scanButton} onPress={handleQRScan}>
-            <Text style={styles.scanButtonText}>Simulate QR Scan (+125 Points)</Text>
-          </TouchableOpacity>
-        </View>
-      )}
+      <Text style={styles.label}>Nombre</Text>
+      <TextInput style={styles.input} value={name} onChangeText={setName} />
+
+      <Text style={styles.label}>Email</Text>
+      <TextInput style={styles.input} value={email} onChangeText={setEmail} keyboardType="email-address" />
+
+      <Text style={styles.label}>Foto (URL)</Text>
+      <TextInput style={styles.input} value={photoURL} onChangeText={setPhotoURL} />
+
+      <Text style={styles.points}>Puntos: {points}</Text>
+
+      <TouchableOpacity style={styles.button} onPress={handleSave} disabled={updating}>
+        <Text style={styles.buttonText}>{updating ? 'Guardando...' : 'Guardar Cambios'}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
+    padding: 20,
     flex: 1,
     backgroundColor: '#fff',
-    padding: 20,
+  },
+  avatarContainer: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  avatar: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+  },
+  label: {
+    fontWeight: 'bold',
+    marginTop: 10,
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 10,
+    marginTop: 5,
+  },
+  points: {
+    marginTop: 15,
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  button: {
+    backgroundColor: '#007AFF',
+    padding: 15,
+    marginTop: 30,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  errorText: {
-    fontSize: 16,
-    color: '#FF6600',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  menuIcon: {
-    marginRight: 10,
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
-  },
-  pointsCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9f9f9',
-    padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
-    shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  avatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#ddd',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 20,
-  },
-  pointsInfo: {
-    flex: 1,
-  },
-  pointsLabel: {
-    fontSize: 14,
-    color: '#666',
-  },
-  points: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    marginVertical: 4,
-  },
-  expiry: {
-    fontSize: 14,
-    color: '#666',
-  },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  historyTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  historyMore: {
-    fontSize: 14,
-    color: '#FF6600',
-  },
-  historyItem: {
-    backgroundColor: '#f2f2f2',
-    padding: 15,
-    borderRadius: 8,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
-  },
-  historyDescription: {
-    fontSize: 16,
-  },
-  historyDate: {
-    fontSize: 14,
-    color: '#666',
-  },
-  qrButton: {
-    flexDirection: 'row',
-    backgroundColor: '#FF6600',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 20,
-  },
-  qrButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginRight: 10,
-  },
-  qrIcon: {
-    marginLeft: 10,
-  },
-  qrModal: {
-    position: 'absolute',
-    top: '20%',
-    left: '10%',
-    right: '10%',
-    backgroundColor: '#fff',
-    padding: 20,
-    borderRadius: 10,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 5,
-  },
-  scanButton: {
-    backgroundColor: '#FF6600',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  scanButtonText: {
-    color: '#fff',
-    fontSize: 14,
   },
 });
