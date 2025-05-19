@@ -10,7 +10,7 @@ interface Product {
   id: string;
   name: string;
   price: number;
-  imageUrl?: string;
+  imageUrl: string;
   category: string;
 }
 
@@ -34,6 +34,9 @@ interface PurchaseHistory {
 export default function MenuScreen() {
   const [loading, setLoading] = useState(true);
   const [products, setProducts] = useState<Product[]>([]);
+  const [filteredProducts, setFilteredProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<string[]>([]);
+  const [selectedCategory, setSelectedCategory] = useState<string>('Todas');
   const [userData, setUserData] = useState<UserData | null>(null);
   const [cart, setCart] = useState<CartItem[]>([]);
   const [purchaseHistory, setPurchaseHistory] = useState<PurchaseHistory[]>([]);
@@ -53,6 +56,14 @@ export default function MenuScreen() {
       router.replace('/');
     }
   }, [user]);
+
+  useEffect(() => {
+    if (selectedCategory === 'Todas') {
+      setFilteredProducts(products);
+    } else {
+      setFilteredProducts(products.filter(product => product.category === selectedCategory));
+    }
+  }, [selectedCategory, products]);
 
   const fetchUserData = async () => {
     setLoading(true);
@@ -79,9 +90,18 @@ export default function MenuScreen() {
       const snapshot = await getDocs(q);
       const data = snapshot.docs.map((doc) => ({
         id: doc.id,
-        ...doc.data(),
+        name: doc.data().name,
+        price: doc.data().price,
+        imageUrl: doc.data().imageUrl || '', // Asegurar que imageUrl existe
+        category: doc.data().category || 'Sin categoría' // Asegurar que category existe
       })) as Product[];
+      
       setProducts(data);
+      setFilteredProducts(data);
+      
+      // Extraer categorías únicas
+      const uniqueCategories = Array.from(new Set(data.map(p => p.category)));
+      setCategories(['Todas', ...uniqueCategories]);
     } catch (error) {
       console.error('Error al obtener productos:', error);
       Alert.alert('Error', 'No se pudieron obtener los productos');
@@ -193,7 +213,7 @@ export default function MenuScreen() {
 
   const handlePoints = () => {
     setActiveSection('points');
-    router.push('/QRPoints'); // Updated path to match QRPoints.tsx in app directory
+    router.push('/QRPoints');
   };
 
   const toggleHistory = () => {
@@ -206,7 +226,18 @@ export default function MenuScreen() {
         <Text style={styles.productName}>{item.name}</Text>
         <Text style={styles.productPoints}>{item.price} pts</Text>
       </View>
-      {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.productImage} />}
+      {item.imageUrl ? (
+        <Image 
+          source={{ uri: item.imageUrl }} 
+          style={styles.productImage} 
+          resizeMode="contain"
+        />
+      ) : (
+        <View style={[styles.productImage, styles.noImage]}>
+          <Icon name="image-not-supported" size={40} color="#ccc" />
+        </View>
+      )}
+      <Text style={styles.productCategory}>{item.category}</Text>
       <TouchableOpacity 
         style={[
           styles.addButton,
@@ -250,6 +281,25 @@ export default function MenuScreen() {
     </View>
   );
 
+  const renderCategoryItem = ({ item }: { item: string }) => (
+    <TouchableOpacity
+      style={[
+        styles.categoryButton,
+        selectedCategory === item && styles.selectedCategoryButton
+      ]}
+      onPress={() => setSelectedCategory(item)}
+    >
+      <Text 
+        style={[
+          styles.categoryText,
+          selectedCategory === item && styles.selectedCategoryText
+        ]}
+      >
+        {item}
+      </Text>
+    </TouchableOpacity>
+  );
+
   if (loading) {
     return (
       <View style={styles.centered}>
@@ -286,15 +336,30 @@ export default function MenuScreen() {
           <Text style={styles.expiryDate}>25/May/2026</Text>
         </View>
 
+        {/* Categories */}
+        <FlatList
+          horizontal
+          data={categories}
+          renderItem={renderCategoryItem}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.categoriesList}
+          showsHorizontalScrollIndicator={false}
+        />
+
         {/* Products */}
         <FlatList
-          data={products}
+          data={filteredProducts}
           renderItem={renderProduct}
           keyExtractor={(item) => item.id}
           numColumns={2}
           columnWrapperStyle={styles.productsRow}
           contentContainerStyle={styles.productsList}
           ListHeaderComponent={<Text style={styles.sectionTitle}>Productos Disponibles</Text>}
+          ListEmptyComponent={
+            <Text style={styles.emptyText}>
+              No hay productos en la categoría {selectedCategory}
+            </Text>
+          }
         />
 
         {/* History Toggle */}
@@ -477,6 +542,31 @@ const styles = StyleSheet.create({
     marginTop: 20,
     marginBottom: 10,
   },
+  categoriesList: {
+    paddingHorizontal: 15,
+    paddingVertical: 10,
+    backgroundColor: '#fff',
+  },
+  categoryButton: {
+    paddingHorizontal: 15,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#f0f0f0',
+    marginRight: 10,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+  },
+  selectedCategoryButton: {
+    backgroundColor: '#00A859',
+    borderColor: '#00A859',
+  },
+  categoryText: {
+    color: '#333',
+  },
+  selectedCategoryText: {
+    color: '#fff',
+    fontWeight: 'bold',
+  },
   productsList: {
     paddingHorizontal: 10,
     paddingBottom: 20,
@@ -518,8 +608,18 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 100,
     borderRadius: 5,
-    marginBottom: 15,
-    resizeMode: 'cover',
+    marginBottom: 10,
+    backgroundColor: '#f9f9f9',
+  },
+  noImage: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  productCategory: {
+    fontSize: 14,
+    color: '#666',
+    marginBottom: 10,
+    fontStyle: 'italic',
   },
   addButton: {
     backgroundColor: '#00A859',
@@ -558,6 +658,7 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: '#666',
     marginVertical: 20,
+    paddingHorizontal: 20,
   },
   historyItem: {
     backgroundColor: '#f9f9f9',
