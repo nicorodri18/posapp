@@ -488,11 +488,10 @@ export default function MenuScreen() {
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5',
+    backgroundColor: '#F5F5F5', // Matches the image background
   },
   scrollContent: {
     paddingBottom: 80,
@@ -507,14 +506,14 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF', // Matches card background
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#E0E0E0', // Matches subtle borders in the image
   },
   title: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#FF9800', // Matches the orange "CATALOG" title
   },
   headerIcons: {
     flexDirection: 'row',
@@ -523,7 +522,7 @@ const styles = StyleSheet.create({
     marginLeft: 15,
   },
   pointsCard: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF', // Matches the white card background
     borderRadius: 10,
     padding: 20,
     margin: 20,
@@ -536,28 +535,28 @@ const styles = StyleSheet.create({
   },
   pointsLabel: {
     fontSize: 16,
-    color: '#666',
+    color: '#757575', // Matches the secondary text color ("Available", "Expire on")
   },
   pointsValue: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#00A859',
+    color: '#F5C400', // Matches the yellow-gold coin color for points
     marginVertical: 10,
   },
   expiryText: {
     fontSize: 14,
-    color: '#666',
+    color: '#757575', // Matches secondary text
     marginTop: 10,
   },
   expiryDate: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#212121', // Matches primary text color
   },
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#212121', // Matches primary text ("GASOLINE", "FOOD")
     marginLeft: 15,
     marginTop: 20,
     marginBottom: 10,
@@ -565,26 +564,26 @@ const styles = StyleSheet.create({
   categoriesList: {
     paddingHorizontal: 15,
     paddingVertical: 10,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
   },
   categoryButton: {
     paddingHorizontal: 15,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#f0f0f0',
+    backgroundColor: '#F0F0F0', // A slightly darker gray for unselected categories
     marginRight: 10,
     borderWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#E0E0E0',
   },
   selectedCategoryButton: {
-    backgroundColor: '#00A859',
-    borderColor: '#00A859',
+    backgroundColor: '#FF9800', // Orange for selected category
+    borderColor: '#FF9800',
   },
   categoryText: {
-    color: '#333',
+    color: '#212121', // Primary text color
   },
   selectedCategoryText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   productsList: {
@@ -597,7 +596,7 @@ const styles = StyleSheet.create({
     marginBottom: 15,
   },
   productContainer: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF', // Matches product card background
     borderRadius: 10,
     width: '48%',
     padding: 15,
@@ -615,13 +614,13 @@ const styles = StyleSheet.create({
   productName: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#333',
+    color: '#212121', // Matches product name text
     flex: 1,
   },
   productPoints: {
     fontSize: 16,
     fontWeight: 'bold',
-    color: '#00A859',
+    color: '#757575', // Matches points text color (e.g., "250 points")
     marginLeft: 10,
   },
   productImage: {
@@ -629,7 +628,7 @@ const styles = StyleSheet.create({
     height: 100,
     borderRadius: 5,
     marginBottom: 10,
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#F9F9F9',
   },
   noImage: {
     justifyContent: 'center',
@@ -637,21 +636,21 @@ const styles = StyleSheet.create({
   },
   productCategory: {
     fontSize: 14,
-    color: '#666',
+    color: '#757575', // Matches secondary text
     marginBottom: 10,
     fontStyle: 'italic',
   },
   addButton: {
-    backgroundColor: '#00A859',
+    backgroundColor: '#FF9800', // Orange for the "Canjear" button
     borderRadius: 5,
     padding: 10,
     alignItems: 'center',
   },
   disabledButton: {
-    backgroundColor: '#cccccc',
+    backgroundColor: '#CCCCCC',
   },
   addButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   historyToggle: {
@@ -659,55 +658,55 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 15,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     marginTop: 20,
     borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#E0E0E0',
   },
   historyToggleText: {
     fontSize: 16,
-    color: '#00A859',
+    color: '#FF9800', // Orange for toggle text
     marginRight: 5,
   },
   historySection: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     padding: 15,
   },
   emptyText: {
     textAlign: 'center',
-    color: '#666',
+    color: '#757575', // Matches secondary text
     marginVertical: 20,
     paddingHorizontal: 20,
   },
   historyItem: {
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#F9F9F9',
     borderRadius: 5,
     padding: 10,
     marginBottom: 10,
   },
   historyDate: {
     fontWeight: 'bold',
-    color: '#333',
+    color: '#212121', // Primary text
     marginBottom: 5,
   },
   historyItems: {
     marginBottom: 5,
   },
   historyProduct: {
-    color: '#666',
+    color: '#757575', // Secondary text
   },
   historyTotal: {
     fontWeight: 'bold',
-    color: '#00A859',
+    color: '#FF9800', // Orange for total
     textAlign: 'right',
   },
   cartSection: {
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     padding: 15,
     marginTop: 20,
     borderTopWidth: 1,
-    borderColor: '#e0e0e0',
+    borderColor: '#E0E0E0',
   },
   cartItem: {
     flexDirection: 'row',
@@ -715,11 +714,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#eee',
+    borderBottomColor: '#EEE',
   },
   cartItemName: {
     flex: 2,
-    color: '#333',
+    color: '#212121', // Primary text
   },
   quantityControls: {
     flexDirection: 'row',
@@ -729,29 +728,29 @@ const styles = StyleSheet.create({
   },
   quantityText: {
     marginHorizontal: 10,
-    color: '#333',
+    color: '#212121', // Primary text
   },
   cartItemPrice: {
     flex: 1,
     textAlign: 'right',
-    color: '#333',
+    color: '#212121', // Primary text
   },
   cartTotal: {
     fontWeight: 'bold',
     fontSize: 16,
-    color: '#333',
+    color: '#212121', // Primary text
     textAlign: 'right',
     marginTop: 10,
   },
   redeemButton: {
-    backgroundColor: '#00A859',
+    backgroundColor: '#FF9800', // Orange for the "Canjear" button
     borderRadius: 5,
     padding: 15,
     alignItems: 'center',
     marginTop: 15,
   },
   redeemButtonText: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -759,9 +758,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#E0E0E0',
     paddingVertical: 10,
     position: 'absolute',
     bottom: 0,
@@ -780,6 +779,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   navButtonActive: {
-    backgroundColor: '#FF9800',
+    backgroundColor: '#FF9800', // Orange for active navigation
   },
 });

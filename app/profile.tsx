@@ -1,10 +1,9 @@
-// Resto de imports igual...
 import { MaterialIcons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import { getAuth } from 'firebase/auth';
-import { collection, getDocs, limit, orderBy, query, Timestamp, where } from 'firebase/firestore';
+import { collection, doc, getDocs, limit, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Image, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { db } from '../firebaseConfig';
 
 interface UserData {
@@ -30,6 +29,8 @@ export default function ProfileScreen() {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [history, setHistory] = useState<PointHistory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState('');
   const user = auth.currentUser;
 
   useEffect(() => {
@@ -51,214 +52,164 @@ export default function ProfileScreen() {
 
       const docSnap = snapshot.docs[0];
       const data = docSnap.data();
-      setUserData({
+      const userData: UserData = {
         docId: docSnap.id,
-        name: data.name ?? 'Usuario',
+        name: data.name,
         email: data.email,
-        points: data.points ?? 0,
+        points: data.points,
+        pointsExpiry: data.pointsExpiry?.toDate(),
         photoURL: data.photoURL,
-        pointsExpiry: data.pointsExpiry instanceof Timestamp ? data.pointsExpiry.toDate() : new Date(),
-      });
+      };
+      setUserData(userData);
+      setEditedName(data.name);
     } catch (error) {
-      console.error('Error al obtener el usuario:', error);
-      Alert.alert('Error', 'No se pudo cargar la información del usuario.');
+      console.error('Error al obtener los datos del usuario:', error);
+      Alert.alert('Error', 'No se pudieron obtener los datos del usuario.');
     } finally {
       setLoading(false);
     }
   };
 
-  const fetchPointHistory = async (userId: string) => {
+  const fetchPointHistory = async (uid: string) => {
     try {
       const q = query(
-        collection(db, 'pointHistory'),
-        where('userId', '==', userId),
+        collection(db, 'users', uid, 'pointHistory'),
         orderBy('date', 'desc'),
-        limit(10)
+        limit(50)
       );
       const snapshot = await getDocs(q);
-      const historyData = snapshot.docs.map((doc) => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          date: data.date.toDate(),
-          points: data.points,
-          description: data.description,
-          type: data.type,
-        };
-      });
+      const historyData: PointHistory[] = snapshot.docs.map((doc) => ({
+        id: doc.id,
+        date: doc.data().date.toDate(),
+        points: doc.data().points,
+        description: doc.data().description,
+        type: doc.data().type,
+      }));
       setHistory(historyData);
     } catch (error) {
-      console.error('Error obteniendo historial:', error);
+      console.error('Error al obtener el historial de puntos:', error);
+      Alert.alert('Error', 'No se pudo cargar el historial de puntos.');
     }
   };
 
-  const formatDate = (date?: Date) => {
-    if (!date) return '—';
-    return date.toLocaleDateString('es-CO', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
+  const handleSaveName = async () => {
+    if (!userData || editedName.trim() === '') return;
+
+    try {
+      const userRef = doc(db, 'users', userData.docId);
+      await updateDoc(userRef, { name: editedName.trim() });
+      setUserData({ ...userData, name: editedName.trim() });
+      setIsEditing(false);
+      Alert.alert('Éxito', 'Nombre actualizado correctamente.');
+    } catch (error) {
+      console.error('Error al actualizar el nombre:', error);
+      Alert.alert('Error', 'No se pudo actualizar el nombre.');
+    }
   };
 
   if (loading) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#007AFF" />
+      <View style={styles.centered}>
+        <ActivityIndicator size="large" color="#000" />
       </View>
     );
   }
 
+  if (!userData) return null;
+
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()}>
-          <MaterialIcons name="arrow-back" size={24} color="#333" />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Perfil</Text>
-        <View style={{ width: 24 }} />
-      </View>
-
-      {/* User Info */}
-      <View style={styles.card}>
-        <Image
-          source={{ uri: userData?.photoURL || 'https://randomuser.me/api/portraits/men/1.jpg' }}
-          style={styles.avatar}
-        />
-        <Text style={styles.userName}>{userData?.name}</Text>
-        <Text style={styles.userEmail}>{userData?.email}</Text>
-      </View>
-
-      {/* Points */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Puntos disponibles</Text>
-        <Text style={styles.pointsValue}>{userData?.points}</Text>
-        <Text style={styles.expiry}>Expiran: {formatDate(userData?.pointsExpiry)}</Text>
-      </View>
-
-      {/* History */}
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Historial de puntos</Text>
-        {history.length === 0 ? (
-          <Text style={styles.emptyText}>No hay movimientos recientes.</Text>
+      <View style={styles.profileSection}>
+        {userData.photoURL && (
+          <Image source={{ uri: userData.photoURL }} style={styles.avatar} />
+        )}
+        {isEditing ? (
+          <>
+            <TextInput
+              style={styles.input}
+              value={editedName}
+              onChangeText={setEditedName}
+              placeholder="Nombre"
+            />
+            <TouchableOpacity onPress={handleSaveName} style={styles.saveButton}>
+              <Text style={styles.saveButtonText}>Guardar</Text>
+            </TouchableOpacity>
+          </>
         ) : (
-          <FlatList
-            data={history}
-            keyExtractor={(item) => item.id}
-            renderItem={({ item }) => (
-              <View style={styles.historyItem}>
-                <Text style={styles.historyDescription}>{item.description}</Text>
-                <Text style={[styles.historyPoints, item.type === 'earned' ? styles.green : styles.red]}>
-                  {item.type === 'earned' ? '+' : '-'}{item.points}
-                </Text>
-                <Text style={styles.historyDate}>{formatDate(item.date)}</Text>
-              </View>
-            )}
-          />
+          <>
+            <Text style={styles.name}>{userData.name}</Text>
+            <TouchableOpacity onPress={() => setIsEditing(true)}>
+              <MaterialIcons name="edit" size={20} color="gray" />
+            </TouchableOpacity>
+          </>
+        )}
+        <Text style={styles.email}>{userData.email}</Text>
+        <Text style={styles.points}>Puntos: {userData.points}</Text>
+        {userData.pointsExpiry && (
+          <Text style={styles.expiry}>
+            Vencen: {userData.pointsExpiry.toLocaleDateString()}
+          </Text>
         )}
       </View>
+
+      <Text style={styles.historyTitle}>Historial de puntos</Text>
+      <FlatList
+        data={history}
+        keyExtractor={(item) => item.id}
+        renderItem={({ item }) => (
+          <View style={styles.historyItem}>
+            <Text style={styles.historyDate}>
+              {item.date.toLocaleDateString()}
+            </Text>
+            <Text style={styles.historyDescription}>{item.description}</Text>
+            <Text style={[
+              styles.historyPoints,
+              item.type === 'earned' ? styles.earned : styles.redeemed
+            ]}>
+              {item.type === 'earned' ? '+' : '-'}{item.points}
+            </Text>
+          </View>
+        )}
+      />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F7F9FC',
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 16,
-    justifyContent: 'space-between',
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
-  },
-  avatar: {
-    width: 90,
-    height: 90,
-    borderRadius: 45,
-    alignSelf: 'center',
-    marginBottom: 12,
-  },
-  userName: {
-    fontSize: 18,
-    fontWeight: '600',
-    textAlign: 'center',
-    color: '#333',
-  },
-  userEmail: {
-    fontSize: 14,
-    color: '#888',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: 'bold',
+  container: { flex: 1, padding: 16 },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  profileSection: { alignItems: 'center', marginBottom: 24 },
+  avatar: { width: 100, height: 100, borderRadius: 50, marginBottom: 12 },
+  name: { fontSize: 22, fontWeight: 'bold' },
+  email: { color: 'gray', marginBottom: 8 },
+  points: { fontSize: 18, marginTop: 8 },
+  expiry: { color: 'gray', fontSize: 12 },
+  input: {
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 8,
+    padding: 8,
+    width: '80%',
     marginBottom: 8,
-    color: '#222',
   },
-  pointsValue: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#007AFF',
-    textAlign: 'center',
-    marginBottom: 4,
+  saveButton: {
+    backgroundColor: '#4CAF50',
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 8,
   },
-  expiry: {
-    fontSize: 13,
-    color: '#555',
-    textAlign: 'center',
-  },
+  saveButtonText: { color: '#fff', fontWeight: 'bold' },
+  historyTitle: { fontSize: 20, fontWeight: 'bold', marginBottom: 8 },
   historyItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingVertical: 8,
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
-    paddingVertical: 10,
   },
-  historyDescription: {
-    fontSize: 15,
-    color: '#333',
-  },
-  historyPoints: {
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  green: {
-    color: '#2ECC71',
-  },
-  red: {
-    color: '#E74C3C',
-  },
-  historyDate: {
-    fontSize: 12,
-    color: '#999',
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: '#999',
-    fontSize: 14,
-    marginTop: 8,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  historyDate: { width: 100 },
+  historyDescription: { flex: 1 },
+  historyPoints: { fontWeight: 'bold' },
+  earned: { color: 'green' },
+  redeemed: { color: 'red' },
 });

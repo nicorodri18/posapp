@@ -225,9 +225,12 @@ export default function ChatScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f6f8fa' },
+  container: {
+    flex: 1,
+    backgroundColor: '#F5F5F5', // Matches the image's background
+  },
   header: {
-    backgroundColor: '#2e86de',
+    backgroundColor: '#FF9800', // Replaces blue with orange
     paddingVertical: 15,
     paddingHorizontal: 20,
     flexDirection: 'row',
@@ -235,39 +238,39 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   backButton: {
-    backgroundColor: '#1b4f72',
+    backgroundColor: '#F5C400', // Uses the yellow-gold for contrast
     padding: 8,
     borderRadius: 20,
     marginRight: 10,
   },
   headerTitle: {
-    color: '#fff',
+    color: '#FFFFFF',
     fontSize: 20,
     fontWeight: 'bold',
     flex: 1,
     textAlign: 'center',
   },
   newChatButton: {
-    backgroundColor: '#1b4f72',
+    backgroundColor: '#F5C400', // Uses yellow-gold for the new chat button
     padding: 8,
     borderRadius: 20,
   },
   chatListContainer: {
-    backgroundColor: '#d6eaf8',
+    backgroundColor: '#FFFFFF', // Matches the card background
     paddingVertical: 8,
   },
   chatItem: {
-    backgroundColor: '#aed6f1',
+    backgroundColor: '#E0E0E0', // Light gray for unselected chat items
     paddingVertical: 6,
     paddingHorizontal: 14,
     borderRadius: 15,
     marginHorizontal: 6,
   },
   chatItemSelected: {
-    backgroundColor: '#2e86de',
+    backgroundColor: '#FF9800', // Orange for selected chat
   },
   chatItemText: {
-    color: '#1b4f72',
+    color: '#212121', // Matches primary text
     fontWeight: '600',
   },
   messagesList: {
@@ -279,7 +282,7 @@ const styles = StyleSheet.create({
     maxWidth: '75%',
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: '#E0E0E0', // Matches subtle borders
     padding: 12,
     marginVertical: 6,
     shadowColor: '#000',
@@ -289,41 +292,41 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   userMessage: {
-    backgroundColor: '#2e86de',
+    backgroundColor: '#FF9800', // Orange for user messages
     alignSelf: 'flex-end',
-    borderColor: '#1b4f72',
+    borderColor: '#F5C400', // Yellow-gold border for contrast
   },
   botMessage: {
-    backgroundColor: '#ffffff',
+    backgroundColor: '#FFFFFF', // White for bot messages
     alignSelf: 'flex-start',
-    borderColor: '#d6eaf8',
+    borderColor: '#E0E0E0', // Light gray border
   },
   messageSender: {
     fontWeight: 'bold',
     marginBottom: 4,
-    color: '#333',
+    color: '#212121', // Primary text color
   },
   messageText: {
-    color: '#333',
+    color: '#212121', // Primary text color
     fontSize: 15,
   },
   inputContainer: {
     flexDirection: 'row',
     padding: 12,
     borderTopWidth: 1,
-    borderTopColor: '#ccc',
-    backgroundColor: '#fff',
+    borderTopColor: '#E0E0E0',
+    backgroundColor: '#FFFFFF', // Matches card background
   },
   input: {
     flex: 1,
-    backgroundColor: '#f0f3f5',
+    backgroundColor: '#F0F0F0', // Slightly darker gray for input
     borderRadius: 25,
     paddingHorizontal: 15,
     fontSize: 16,
     maxHeight: 100,
   },
   sendButton: {
-    backgroundColor: '#2e86de',
+    backgroundColor: '#FF9800', // Orange for send button
     marginLeft: 10,
     borderRadius: 25,
     padding: 12,

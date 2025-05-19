@@ -255,7 +255,7 @@ export default function QRPoints() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f5f5f5', // Light gray background
+    backgroundColor: '#F5F5F5', // Matches the image's background
     paddingBottom: 80, // Space for bottom navigation bar
   },
   centered: {
@@ -265,7 +265,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#D32F2F', // Red for errors
+    color: '#D32F2F', // Retained red for errors
     textAlign: 'center',
     marginHorizontal: 20,
   },
@@ -274,18 +274,18 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    backgroundColor: '#fff', // White background
+    backgroundColor: '#FFFFFF', // Matches card background
     borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    borderBottomColor: '#E0E0E0',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    color: '#333', // Dark gray for titles
+    color: '#FF9800', // Matches the orange "CATALOG" title from the image
   },
   pointsCard: {
     flexDirection: 'row',
-    backgroundColor: '#fff', // White background
+    backgroundColor: '#FFFFFF', // Matches card background
     borderRadius: 10,
     padding: 20,
     margin: 20,
@@ -300,7 +300,7 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#eee',
+    backgroundColor: '#E0E0E0', // Light gray for placeholder
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 20,
@@ -310,17 +310,17 @@ const styles = StyleSheet.create({
   },
   pointsLabel: {
     fontSize: 16,
-    color: '#666', // Gray for secondary text
+    color: '#757575', // Matches secondary text
   },
   points: {
     fontSize: 36,
     fontWeight: 'bold',
-    color: '#00A859', // Green for points
+    color: '#F5C400', // Matches yellow-gold for points
     marginVertical: 10,
   },
   expiry: {
     fontSize: 14,
-    color: '#666', // Gray for secondary text
+    color: '#757575', // Matches secondary text
   },
   historySection: {
     marginHorizontal: 20,
@@ -328,11 +328,11 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 20,
     fontWeight: 'bold',
-    color: '#333', // Dark gray for titles
+    color: '#212121', // Matches primary text
     marginBottom: 10,
   },
   historyItem: {
-    backgroundColor: '#fff', // White background
+    backgroundColor: '#FFFFFF', // Matches card background
     borderRadius: 8,
     padding: 15,
     marginBottom: 10,
@@ -347,15 +347,15 @@ const styles = StyleSheet.create({
   },
   historyDescription: {
     fontSize: 16,
-    color: '#333', // Dark gray for primary text
+    color: '#212121', // Matches primary text
   },
   historyDate: {
     fontSize: 14,
-    color: '#666', // Gray for secondary text
+    color: '#757575', // Matches secondary text
   },
   qrButton: {
     flexDirection: 'row',
-    backgroundColor: '#00A859', // Green for buttons
+    backgroundColor: '#FF9800', // Matches orange for buttons
     borderRadius: 8,
     padding: 15,
     marginHorizontal: 20,
@@ -369,7 +369,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   qrButtonText: {
-    color: '#fff', // White text
+    color: '#FFFFFF', // White text
     fontSize: 18,
     fontWeight: 'bold',
     marginRight: 10,
@@ -388,7 +388,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   qrModalContent: {
-    backgroundColor: '#fff', // White background
+    backgroundColor: '#FFFFFF', // Matches card background
     borderRadius: 10,
     padding: 20,
     alignItems: 'center',
@@ -401,19 +401,19 @@ const styles = StyleSheet.create({
   },
   qrHelpText: {
     fontSize: 16,
-    color: '#333', // Dark gray for text
+    color: '#212121', // Matches primary text
     marginVertical: 20,
     textAlign: 'center',
   },
   closeButton: {
-    backgroundColor: '#D32F2F', // Red for close button
+    backgroundColor: '#D32F2F', // Retained red for close button
     borderRadius: 5,
     padding: 10,
     alignItems: 'center',
     width: '50%',
   },
   closeButtonText: {
-    color: '#fff', // White text
+    color: '#FFFFFF', // White text
     fontSize: 16,
     fontWeight: 'bold',
   },
@@ -421,9 +421,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#fff', // White background
+    backgroundColor: '#FFFFFF', // Matches card background
     borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    borderTopColor: '#E0E0E0',
     paddingVertical: 10,
     position: 'absolute',
     bottom: 0,
@@ -442,6 +442,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   navButtonActive: {
-    backgroundColor: '#FF9800', // Orange for active state
+    backgroundColor: '#FF9800', // Matches orange for active state
   },
 });
