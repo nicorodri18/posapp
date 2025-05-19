@@ -1,12 +1,10 @@
 import { MaterialIcons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router'; // Import useRouter for navigation
+import { useRouter } from 'expo-router';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
 import {
   collection,
-  doc,
   getDocs,
   query,
-  updateDoc,
   where,
 } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
@@ -18,7 +16,7 @@ import {
   View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
-import Icon from 'react-native-vector-icons/MaterialIcons'; // Import Icon for navigation bar icons
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { db } from '../firebaseConfig';
 
 export default function QRPoints() {
@@ -27,8 +25,8 @@ export default function QRPoints() {
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [activeSection, setActiveSection] = useState('points'); // Track active section, default to 'points'
-  const router = useRouter(); // Initialize router for navigation
+  const [activeSection, setActiveSection] = useState('points');
+  const router = useRouter();
 
   useEffect(() => {
     const auth = getAuth();
@@ -89,58 +87,10 @@ export default function QRPoints() {
     };
   }, []);
 
-  const handleQRScan = async () => {
-    if (!user || !userData || !userData.id) return;
-
-    try {
-      const userRef = doc(db, 'users', userData.id);
-      const newPoints = (userData.points || 0) + 125;
-      const newHistory = [
-        ...(userData.history || []),
-        {
-          date: new Date().toISOString(),
-          points: 125,
-          description: 'You got 125 points',
-        },
-      ];
-
-      await updateDoc(userRef, {
-        points: newPoints,
-        history: newHistory,
-      });
-
-      setUserData({ ...userData, points: newPoints, history: newHistory });
-    } catch (error) {
-      console.error('Error updating points:', error);
-      setError('Error al actualizar los puntos. Por favor, intenta de nuevo.');
-    }
-  };
-
-  // Navigation handlers
-  const handlePoints = () => {
-    setActiveSection('points');
-    router.push('/QRPoints'); // Already on QRPoints, but included for consistency
-  };
-
-  const handleHome = () => {
-    setActiveSection('home');
-    router.push('/client/MenuScreen');
-  };
-
-  const handleChat = () => {
-    setActiveSection('chat');
-    router.push('/chat');
-  };
-
-  const handleProfile = () => {
-    setActiveSection('profile');
-    router.push('/EditProfile');
-  };
-
   if (loading) {
     return (
       <View style={styles.centered}>
-        <ActivityIndicator size="large" color="#FF6600" />
+        <ActivityIndicator size="large" color="#00A859" />
       </View>
     );
   }
@@ -165,69 +115,69 @@ export default function QRPoints() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <MaterialIcons name="menu" size={24} color="#000" style={styles.menuIcon} />
-        <Text style={styles.headerTitle}>POINTS</Text>
+        <Text style={styles.headerTitle}>PUNTOS</Text>
       </View>
 
       {/* Points Card */}
       <View style={styles.pointsCard}>
         <View style={styles.avatarPlaceholder}>
-          <MaterialIcons name="person" size={40} color="#888" />
+          <MaterialIcons name="person" size={40} color="#666" />
         </View>
         <View style={styles.pointsInfo}>
-          <Text style={styles.pointsLabel}>Available</Text>
+          <Text style={styles.pointsLabel}>Puntos Disponibles</Text>
           <Text style={styles.points}>
-            <MaterialIcons name="monetization-on" size={24} color="#FFD700" /> {userData.points}
+            {userData.points} <MaterialIcons name="monetization-on" size={24} color="#00A859" />
           </Text>
-          <Text style={styles.expiry}>Expire on {userData.expiry || '25/MAY/2026'}</Text>
+          <Text style={styles.expiry}>Expiran el {userData.expiry || '25/MAY/2026'}</Text>
         </View>
       </View>
 
       {/* History Section */}
-      <View style={styles.historyHeader}>
-        <Text style={styles.historyTitle}>HYSTORY</Text>
-        <Text style={styles.historyMore}>more</Text>
-      </View>
-      {(userData.history || []).length > 0 ? (
-        userData.history.slice(0, 1).map((entry: any, index: number) => (
-          <View key={index} style={styles.historyItem}>
-            <Text style={styles.historyDescription}>{entry.description}</Text>
-            <Text style={styles.historyDate}>
-              {new Date(entry.date).toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </Text>
+      <View style={styles.historySection}>
+        <Text style={styles.sectionTitle}>Historial</Text>
+        {(userData.history || []).length > 0 ? (
+          userData.history.slice(0, 1).map((entry: any, index: number) => (
+            <View key={index} style={styles.historyItem}>
+              <Text style={styles.historyDescription}>{entry.description}</Text>
+              <Text style={styles.historyDate}>
+                {new Date(entry.date).toLocaleDateString('es-ES', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </Text>
+            </View>
+          ))
+        ) : (
+          <View style={styles.historyItem}>
+            <Text style={styles.historyDescription}>No hay historial disponible</Text>
           </View>
-        ))
-      ) : (
-        <View style={styles.historyItem}>
-          <Text style={styles.historyDescription}>No history available</Text>
-        </View>
-      )}
+        )}
+      </View>
 
       {/* QR Button */}
       <TouchableOpacity style={styles.qrButton} onPress={() => setShowQR(!showQR)}>
-        <Text style={styles.qrButtonText}>Get Points</Text>
+        <Text style={styles.qrButtonText}>Obtener Puntos</Text>
         <MaterialIcons name="qr-code" size={24} color="#fff" style={styles.qrIcon} />
       </TouchableOpacity>
 
       {/* QR Code Modal */}
       {showQR && (
         <View style={styles.qrModal}>
-          <QRCode
-            value={`add-points:${userData.id}`}
-            size={250}
-            color="#000"
-            backgroundColor="#fff"
-          />
-          <TouchableOpacity style={styles.scanButton} onPress={handleQRScan}>
-            <Text style={styles.scanButtonText}>Simulate QR Scan (+125 Points)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.closeButton} onPress={() => setShowQR(false)}>
-            <Text style={styles.closeButtonText}>Close</Text>
-          </TouchableOpacity>
+          <View style={styles.qrModalContent}>
+            <QRCode
+              value={`add-points:${userData.id}`}
+              size={200}
+              color="#000"
+              backgroundColor="#fff"
+            />
+            <Text style={styles.qrHelpText}>
+              Muestra este código al administrador para recibir puntos
+            </Text>
+            <TouchableOpacity style={styles.closeButton} onPress={() => setShowQR(false)}>
+              <Text style={styles.closeButtonText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       )}
 
@@ -238,7 +188,10 @@ export default function QRPoints() {
             styles.navButton,
             activeSection === 'points' && styles.navButtonActive,
           ]}
-          onPress={handlePoints}
+          onPress={() => {
+            setActiveSection('points');
+            router.push('/QRPoints');
+          }}
         >
           <Icon
             name="attach-money"
@@ -251,7 +204,10 @@ export default function QRPoints() {
             styles.navButton,
             activeSection === 'home' && styles.navButtonActive,
           ]}
-          onPress={handleHome}
+          onPress={() => {
+            setActiveSection('home');
+            router.push('/client/MenuScreen');
+          }}
         >
           <Icon
             name="home"
@@ -264,7 +220,10 @@ export default function QRPoints() {
             styles.navButton,
             activeSection === 'chat' && styles.navButtonActive,
           ]}
-          onPress={handleChat}
+          onPress={() => {
+            setActiveSection('chat');
+            router.push('/chat');
+          }}
         >
           <Icon
             name="build"
@@ -277,7 +236,10 @@ export default function QRPoints() {
             styles.navButton,
             activeSection === 'profile' && styles.navButtonActive,
           ]}
-          onPress={handleProfile}
+          onPress={() => {
+            setActiveSection('profile');
+            router.push('/EditProfile');
+          }}
         >
           <Icon
             name="person"
@@ -293,9 +255,8 @@ export default function QRPoints() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
-    paddingBottom: 80, // Added padding to prevent overlap with bottom nav
+    backgroundColor: '#f5f5f5', // Light gray background
+    paddingBottom: 80, // Space for bottom navigation bar
   },
   centered: {
     flex: 1,
@@ -304,40 +265,42 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: '#FF6600',
+    color: '#D32F2F', // Red for errors
     textAlign: 'center',
+    marginHorizontal: 20,
   },
   header: {
     flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
-  },
-  menuIcon: {
-    marginRight: 10,
+    padding: 20,
+    backgroundColor: '#fff', // White background
+    borderBottomWidth: 1,
+    borderBottomColor: '#e0e0e0',
   },
   headerTitle: {
     fontSize: 24,
     fontWeight: 'bold',
-    flex: 1,
-    textAlign: 'center',
+    color: '#333', // Dark gray for titles
   },
   pointsCard: {
     flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f9f9f9',
+    backgroundColor: '#fff', // White background
+    borderRadius: 10,
     padding: 20,
-    borderRadius: 16,
-    marginBottom: 20,
+    margin: 20,
+    alignItems: 'center',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
-    shadowRadius: 6,
+    shadowRadius: 4,
     elevation: 3,
   },
   avatarPlaceholder: {
     width: 60,
     height: 60,
     borderRadius: 30,
-    backgroundColor: '#ddd',
+    backgroundColor: '#eee',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 20,
@@ -346,59 +309,68 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   pointsLabel: {
-    fontSize: 14,
-    color: '#666',
+    fontSize: 16,
+    color: '#666', // Gray for secondary text
   },
   points: {
-    fontSize: 24,
+    fontSize: 36,
     fontWeight: 'bold',
-    marginVertical: 4,
+    color: '#00A859', // Green for points
+    marginVertical: 10,
   },
   expiry: {
     fontSize: 14,
-    color: '#666',
+    color: '#666', // Gray for secondary text
   },
-  historyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 10,
+  historySection: {
+    marginHorizontal: 20,
   },
-  historyTitle: {
-    fontSize: 18,
+  sectionTitle: {
+    fontSize: 20,
     fontWeight: 'bold',
-  },
-  historyMore: {
-    fontSize: 14,
-    color: '#FF6600',
+    color: '#333', // Dark gray for titles
+    marginBottom: 10,
   },
   historyItem: {
-    backgroundColor: '#f2f2f2',
-    padding: 15,
+    backgroundColor: '#fff', // White background
     borderRadius: 8,
+    padding: 15,
+    marginBottom: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    alignItems: 'center',
   },
   historyDescription: {
     fontSize: 16,
+    color: '#333', // Dark gray for primary text
   },
   historyDate: {
     fontSize: 14,
-    color: '#666',
+    color: '#666', // Gray for secondary text
   },
   qrButton: {
     flexDirection: 'row',
-    backgroundColor: '#FF6600',
-    paddingVertical: 15,
-    paddingHorizontal: 30,
-    borderRadius: 30,
+    backgroundColor: '#00A859', // Green for buttons
+    borderRadius: 8,
+    padding: 15,
+    marginHorizontal: 20,
+    marginVertical: 20,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 3,
   },
   qrButtonText: {
-    color: '#fff',
-    fontSize: 16,
+    color: '#fff', // White text
+    fontSize: 18,
     fontWeight: 'bold',
     marginRight: 10,
   },
@@ -407,42 +379,49 @@ const styles = StyleSheet.create({
   },
   qrModal: {
     position: 'absolute',
-    top: '20%',
-    left: '10%',
-    right: '10%',
-    backgroundColor: '#fff',
-    padding: 20,
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  qrModalContent: {
+    backgroundColor: '#fff', // White background
     borderRadius: 10,
+    padding: 20,
     alignItems: 'center',
     shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowRadius: 4,
     elevation: 5,
+    width: '80%',
   },
-  scanButton: {
-    backgroundColor: '#FF6600',
-    padding: 10,
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  scanButtonText: {
-    color: '#fff',
-    fontSize: 14,
+  qrHelpText: {
+    fontSize: 16,
+    color: '#333', // Dark gray for text
+    marginVertical: 20,
+    textAlign: 'center',
   },
   closeButton: {
-    marginTop: 10,
+    backgroundColor: '#D32F2F', // Red for close button
+    borderRadius: 5,
     padding: 10,
+    alignItems: 'center',
+    width: '50%',
   },
   closeButtonText: {
-    color: '#FF6600',
+    color: '#fff', // White text
     fontSize: 16,
+    fontWeight: 'bold',
   },
-  // Added styles for bottom navigation bar
   bottomNav: {
     flexDirection: 'row',
     justifyContent: 'space-around',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: '#fff', // White background
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     paddingVertical: 10,
@@ -463,6 +442,6 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   navButtonActive: {
-    backgroundColor: '#FF9800', // Orange background for active section
+    backgroundColor: '#FF9800', // Orange for active state
   },
 });

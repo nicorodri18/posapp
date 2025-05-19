@@ -1,3 +1,5 @@
+import { MaterialIcons } from '@expo/vector-icons';
+import { BarCodeScanner } from 'expo-barcode-scanner';
 import * as ImagePicker from 'expo-image-picker';
 import {
   addDoc,
@@ -15,6 +17,7 @@ import {
   Alert,
   FlatList,
   Image,
+  Modal,
   Picker,
   ScrollView, StyleSheet, Text,
   TextInput,
@@ -23,6 +26,7 @@ import {
 } from 'react-native';
 import { db } from '../../firebaseConfig';
 import { supabase } from '../../supabaseClient';
+
 interface Product {
   id: string;
   name: string;
@@ -57,6 +61,12 @@ export default function AdminDashboard() {
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
 
+  // Estados para el escáner QR
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [scanned, setScanned] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
+  const [scannedUserId, setScannedUserId] = useState<string | null>(null);
+
   // Lista de categorías predefinidas
   const categories = ['Electrónica', 'Ropa', 'Hogar', 'Juguetes', 'Otros'];
 
@@ -66,6 +76,12 @@ export default function AdminDashboard() {
     } else {
       fetchUsers();
     }
+
+    // Solicitar permisos para la cámara
+    (async () => {
+      const { status } = await BarCodeScanner.requestPermissionsAsync();
+      setHasPermission(status === 'granted');
+    })();
   }, [activeTab]);
 
   const fetchProducts = async () => {
@@ -236,6 +252,37 @@ export default function AdminDashboard() {
     }
   };
 
+  // Función para manejar el escaneo de QR
+  const handleBarCodeScanned = async ({ type, data }: { type: string; data: string }) => {
+    setScanned(true);
+    
+    try {
+      // El formato del QR es "add-points:userId"
+      if (type === BarCodeScanner.Constants.BarCodeType.qr && data.startsWith('add-points:')) {
+        const userId = data.split(':')[1];
+        setScannedUserId(userId);
+        
+        // Buscar el usuario en la lista
+        const user = users.find(u => u.id === userId);
+        
+        if (user) {
+          setSelectedUser(user);
+          setPointsToAdd('125'); // Valor predeterminado
+          Alert.alert('QR Escaneado', `Usuario encontrado: ${user.name}`);
+        } else {
+          Alert.alert('Error', 'Usuario no encontrado en la base de datos');
+        }
+      } else {
+        Alert.alert('Error', 'Código QR no válido');
+      }
+    } catch (error) {
+      console.error('Error al procesar QR:', error);
+      Alert.alert('Error', 'Error al procesar el código QR');
+    } finally {
+      setShowScanner(false);
+    }
+  };
+
   const renderProductItem = ({ item }: { item: Product }) => (
     <View style={styles.itemContainer}>
       {item.imageUrl && <Image source={{ uri: item.imageUrl }} style={styles.image} />}
@@ -333,6 +380,20 @@ export default function AdminDashboard() {
             <>
               <Text style={styles.sectionTitle}>Gestión de Usuarios</Text>
               
+              {/* Botón para escanear QR */}
+              <TouchableOpacity 
+                style={styles.qrButton} 
+                onPress={() => setShowScanner(true)}
+                disabled={hasPermission === false}
+              >
+                <MaterialIcons name="qr-code-scanner" size={24} color="white" />
+                <Text style={styles.qrButtonText}>Escanear QR de Usuario</Text>
+              </TouchableOpacity>
+
+              {hasPermission === false && (
+                <Text style={styles.errorText}>No se otorgaron permisos para la cámara</Text>
+              )}
+
               {users.length === 0 ? (
                 <View style={{ marginTop: 20 }}>
                   <Text style={styles.emptyText}>No hay usuarios registrados.</Text>
@@ -402,9 +463,38 @@ export default function AdminDashboard() {
           )}
         </ScrollView>
       )}
+
+      {/* Modal del escáner QR */}
+      <Modal
+        visible={showScanner}
+        transparent={false}
+        animationType="slide"
+        onRequestClose={() => setShowScanner(false)}
+      >
+        <View style={styles.scannerContainer}>
+          <BarCodeScanner
+            onBarCodeScanned={scanned ? undefined : handleBarCodeScanned}
+            style={StyleSheet.absoluteFillObject}
+          />
+          <View style={styles.scannerOverlay}>
+            <View style={styles.scannerFrame} />
+            <Text style={styles.scannerText}>Escanea el código QR del usuario</Text>
+          </View>
+          <TouchableOpacity 
+            style={styles.closeScannerButton} 
+            onPress={() => {
+              setScanned(false);
+              setShowScanner(false);
+            }}
+          >
+            <Text style={styles.closeScannerButtonText}>Cerrar Escáner</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </View>
   );
 }
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -620,5 +710,66 @@ const styles = StyleSheet.create({
     color: '#666666',
     textAlign: 'center',
     marginVertical: 20,
+  },
+  errorText: {
+    color: 'red',
+    textAlign: 'center',
+    marginVertical: 10,
+  },
+  qrButton: {
+    flexDirection: 'row',
+    backgroundColor: '#00A859',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 16,
+  },
+  qrButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 10,
+  },
+  scannerContainer: {
+    flex: 1,
+    flexDirection: 'column',
+    justifyContent: 'flex-end',
+  },
+  scannerOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scannerFrame: {
+    width: 250,
+    height: 250,
+    borderWidth: 2,
+    borderColor: '#00A859',
+    backgroundColor: 'transparent',
+  },
+  scannerText: {
+    color: 'white',
+    fontSize: 18,
+    marginTop: 20,
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    padding: 10,
+    borderRadius: 5,
+  },
+  closeScannerButton: {
+    backgroundColor: '#D32F2F',
+    padding: 15,
+    margin: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  closeScannerButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 });
