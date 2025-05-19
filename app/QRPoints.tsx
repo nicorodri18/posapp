@@ -1,13 +1,20 @@
 import { MaterialIcons } from '@expo/vector-icons';
 import { getAuth, onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import {
+    collection,
+    doc,
+    getDocs,
+    query,
+    updateDoc,
+    where,
+} from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import {
-  ActivityIndicator,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { db } from '../firebaseConfig';
@@ -17,51 +24,83 @@ export default function QRPoints() {
   const [userData, setUserData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [showQR, setShowQR] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const auth = getAuth();
+    const timeout = setTimeout(() => {
+      if (loading) {
+        setLoading(false);
+        setError('Tiempo de carga agotado. Intenta de nuevo.');
+      }
+    }, 10000);
+
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (!firebaseUser) {
         setUser(null);
         setUserData(null);
         setLoading(false);
+        clearTimeout(timeout);
         return;
       }
 
       setUser(firebaseUser);
       try {
-        const docRef = doc(db, 'users', firebaseUser.uid);
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          setUserData(docSnap.data());
+        const q = query(
+          collection(db, 'users'),
+          where('email', '==', firebaseUser.email)
+        );
+        const querySnapshot = await getDocs(q);
+
+        if (!querySnapshot.empty) {
+          const doc = querySnapshot.docs[0];
+          setUserData({ ...doc.data(), id: doc.id });
         } else {
-          console.warn('No user data found in Firestore');
-          setUserData({ name: 'Usuario', points: 0, history: [] });
+          setError('Usuario no encontrado en Firestore.');
+          setUserData({
+            name: 'Usuario',
+            points: 0,
+            history: [],
+            expiry: '25/MAY/2026',
+          });
         }
       } catch (error) {
-        console.error('Error fetching user data:', error);
-        setUserData({ name: 'Usuario', points: 0, history: [] });
+        console.error('Error al obtener usuario:', error);
+        setError('Error al obtener datos del usuario.');
+        setUserData({
+          name: 'Usuario',
+          points: 0,
+          history: [],
+          expiry: '25/MAY/2026',
+        });
       } finally {
+        clearTimeout(timeout);
         setLoading(false);
       }
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribe();
+      clearTimeout(timeout);
+    };
   }, []);
 
-  // Simulate QR scan and point addition (replace with actual backend logic)
   const handleQRScan = async () => {
-    if (!user) return;
+    if (!user || !userData || !userData.id) return;
 
     try {
-      const docRef = doc(db, 'users', user.uid);
-      const newPoints = (userData.points || 0) + 125; // Add 125 points
+      const userRef = doc(db, 'users', userData.id);
+      const newPoints = (userData.points || 0) + 125;
       const newHistory = [
         ...(userData.history || []),
-        { date: new Date().toISOString(), points: 125, description: 'You got 125 points' },
+        {
+          date: new Date().toISOString(),
+          points: 125,
+          description: 'You got 125 points',
+        },
       ];
 
-      await updateDoc(docRef, {
+      await updateDoc(userRef, {
         points: newPoints,
         history: newHistory,
       });
@@ -69,6 +108,7 @@ export default function QRPoints() {
       setUserData({ ...userData, points: newPoints, history: newHistory });
     } catch (error) {
       console.error('Error updating points:', error);
+      setError('Error al actualizar los puntos. Por favor, intenta de nuevo.');
     }
   };
 
@@ -76,6 +116,14 @@ export default function QRPoints() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color="#FF6600" />
+      </View>
+    );
+  }
+
+  if (error) {
+    return (
+      <View style={styles.centered}>
+        <Text style={styles.errorText}>{error}</Text>
       </View>
     );
   }
@@ -106,7 +154,7 @@ export default function QRPoints() {
           <Text style={styles.points}>
             <MaterialIcons name="monetization-on" size={24} color="#FFD700" /> {userData.points}
           </Text>
-          <Text style={styles.expiry}>Expire on 25/MAY/2026</Text>
+          <Text style={styles.expiry}>Expire on {userData.expiry || '25/MAY/2026'}</Text>
         </View>
       </View>
 
@@ -140,18 +188,20 @@ export default function QRPoints() {
         <MaterialIcons name="qr-code" size={24} color="#fff" style={styles.qrIcon} />
       </TouchableOpacity>
 
-      {/* QR Code Modal (simplified for this example) */}
+      {/* QR Code Modal */}
       {showQR && (
         <View style={styles.qrModal}>
           <QRCode
-            value={`add-points:${user.uid}`} // Encodes user UID for scanning
+            value={`add-points:${userData.id}`}
             size={250}
             color="#000"
             backgroundColor="#fff"
           />
-          {/* Simulate QR scan for testing */}
           <TouchableOpacity style={styles.scanButton} onPress={handleQRScan}>
             <Text style={styles.scanButtonText}>Simulate QR Scan (+125 Points)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.closeButton} onPress={() => setShowQR(false)}>
+            <Text style={styles.closeButtonText}>Close</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -173,6 +223,7 @@ const styles = StyleSheet.create({
   errorText: {
     fontSize: 16,
     color: '#FF6600',
+    textAlign: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -295,5 +346,13 @@ const styles = StyleSheet.create({
   scanButtonText: {
     color: '#fff',
     fontSize: 14,
+  },
+  closeButton: {
+    marginTop: 10,
+    padding: 10,
+  },
+  closeButtonText: {
+    color: '#FF6600',
+    fontSize: 16,
   },
 });
