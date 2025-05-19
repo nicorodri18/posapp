@@ -1,6 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import { getAuth, signOut } from 'firebase/auth';
-import { addDoc, collection, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
+import { collection, doc, getDocs, orderBy, query, updateDoc, where } from 'firebase/firestore';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Icon from 'react-native-vector-icons/MaterialIcons';
@@ -46,11 +47,13 @@ export default function MenuScreen() {
   const auth = getAuth();
   const user = auth.currentUser;
 
+  const HISTORY_STORAGE_KEY = '@LocalPurchaseHistory';
+
   useEffect(() => {
     if (user) {
       fetchUserData();
       fetchProducts();
-      fetchPurchaseHistory();
+      loadLocalPurchaseHistory();
     } else {
       setLoading(false);
       router.replace('/');
@@ -92,14 +95,13 @@ export default function MenuScreen() {
         id: doc.id,
         name: doc.data().name,
         price: doc.data().price,
-        imageUrl: doc.data().imageUrl || '', // Asegurar que imageUrl existe
-        category: doc.data().category || 'Sin categoría' // Asegurar que category existe
+        imageUrl: doc.data().imageUrl || '',
+        category: doc.data().category || 'Sin categoría'
       })) as Product[];
       
       setProducts(data);
       setFilteredProducts(data);
       
-      // Extraer categorías únicas
       const uniqueCategories = Array.from(new Set(data.map(p => p.category)));
       setCategories(['Todas', ...uniqueCategories]);
     } catch (error) {
@@ -108,22 +110,27 @@ export default function MenuScreen() {
     }
   };
 
-  const fetchPurchaseHistory = async () => {
+  const loadLocalPurchaseHistory = async () => {
     try {
-      const q = query(
-        collection(db, 'purchaseHistory'),
-        where('userId', '==', user?.uid),
-        orderBy('date', 'desc')
-      );
-      const snapshot = await getDocs(q);
-      const data = snapshot.docs.map((doc) => ({
-        id: doc.id,
-        ...doc.data(),
-      })) as PurchaseHistory[];
-      setPurchaseHistory(data);
+      const jsonValue = await AsyncStorage.getItem(HISTORY_STORAGE_KEY);
+      if (jsonValue !== null) {
+        const history = JSON.parse(jsonValue) as PurchaseHistory[];
+        setPurchaseHistory(history);
+      }
     } catch (error) {
-      console.error('Error al obtener historial de compras:', error);
-      Alert.alert('Error', 'No se pudo obtener el historial de compras');
+      console.error('Error al cargar historial local:', error);
+      Alert.alert('Error', 'No se pudo cargar el historial de compras');
+    }
+  };
+
+  const savePurchaseToHistory = async (newPurchase: PurchaseHistory) => {
+    try {
+      const updatedHistory = [newPurchase, ...purchaseHistory];
+      setPurchaseHistory(updatedHistory);
+      await AsyncStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(updatedHistory));
+    } catch (error) {
+      console.error('Error al guardar historial:', error);
+      throw error;
     }
   };
 
@@ -164,22 +171,25 @@ export default function MenuScreen() {
     }
 
     try {
-      const purchaseData = {
-        userId: user?.uid,
-        items: cart,
+      const newPurchase: PurchaseHistory = {
+        id: Date.now().toString(),
+        items: [...cart],
         date: new Date().toISOString(),
         total: totalCost,
       };
-      await addDoc(collection(db, 'purchaseHistory'), purchaseData);
 
+      // Actualizar puntos en Firebase
       const updatedPoints = userData.points - totalCost;
       await updateDoc(doc(db, 'users', userData.docId), { points: updatedPoints });
-
+      
+      // Guardar en historial local
+      await savePurchaseToHistory(newPurchase);
+      
+      // Actualizar estado local
+      setUserData({ ...userData, points: updatedPoints });
       setCart([]);
+      
       Alert.alert('Compra exitosa', `Tu compra de ${cart.length} productos ha sido procesada.`);
-
-      fetchUserData();
-      fetchPurchaseHistory();
     } catch (error) {
       console.error('Error al procesar el canje:', error);
       Alert.alert('Error', 'No se pudo procesar el canje');
@@ -269,7 +279,13 @@ export default function MenuScreen() {
 
   const renderHistoryItem = ({ item }: { item: PurchaseHistory }) => (
     <View style={styles.historyItem}>
-      <Text style={styles.historyDate}>{new Date(item.date).toLocaleDateString()}</Text>
+      <Text style={styles.historyDate}>{new Date(item.date).toLocaleDateString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      })}</Text>
       <View style={styles.historyItems}>
         {item.items.map((product, index) => (
           <Text key={index} style={styles.historyProduct}>
@@ -313,7 +329,7 @@ export default function MenuScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>CATALOG</Text>
+          <Text style={styles.title}>CATÁLOGO</Text>
           <View style={styles.headerIcons}>
             <TouchableOpacity onPress={handleChat} style={styles.iconButton}>
               <Icon name="chat" size={28} color="#2196F3" />
@@ -329,11 +345,11 @@ export default function MenuScreen() {
 
         {/* Points Card */}
         <View style={styles.pointsCard}>
-          <Text style={styles.pointsLabel}>Points</Text>
+          <Text style={styles.pointsLabel}>Tus Puntos</Text>
           <Text style={styles.pointsValue}>{userData?.points ?? 0}</Text>
-          <Text style={styles.pointsLabel}>Available</Text>
-          <Text style={styles.expiryText}>Expire on</Text>
-          <Text style={styles.expiryDate}>25/May/2026</Text>
+          <Text style={styles.pointsLabel}>Disponibles</Text>
+          <Text style={styles.expiryText}>Vencen el</Text>
+          <Text style={styles.expiryDate}>31/12/2025</Text>
         </View>
 
         {/* Categories */}
@@ -402,7 +418,11 @@ export default function MenuScreen() {
               <Text style={styles.cartTotal}>
                 Total: {cart.reduce((sum, item) => sum + item.price * item.quantity, 0)} pts
               </Text>
-              <TouchableOpacity style={styles.redeemButton} onPress={handleRedeemCart}>
+              <TouchableOpacity 
+                style={styles.redeemButton} 
+                onPress={handleRedeemCart}
+                disabled={!userData || userData.points < cart.reduce((sum, item) => sum + item.price * item.quantity, 0)}
+              >
                 <Text style={styles.redeemButtonText}>Canjear</Text>
               </TouchableOpacity>
             </>
